@@ -1,23 +1,203 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'GeistSans';
+  src: url('/fonts/geist-sans/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'GeistPixel';
+  src: url('/fonts/geist-pixel/GeistPixel-Square.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
-  --font-sans: "Inter", "Outfit", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: "GeistSans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "GeistPixel", Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-pixel: "GeistPixel", monospace;
   
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-900: #1e3a8a;
-  
-  --color-surface-900: #0f172a;
-  --color-surface-800: #1e293b;
-  --color-surface-700: #334155;
+  --color-ink-bg: var(--theme-bg);
+  --color-ink-surface: var(--theme-surface);
+  --color-ink-border: var(--theme-border);
+  --color-ink-accent: var(--theme-accent);
+  --color-ink-accent-hover: var(--theme-accent-hover);
+  --color-ink-text: var(--theme-text);
+  --color-ink-text-muted: var(--theme-text-muted);
+}
+
+:root {
+  /* Light mode */
+  --theme-bg: #fdfdfc;
+  --theme-surface: #f3f4f6;
+  --theme-border: #e5e7eb;
+  --theme-accent: #d97706;
+  --theme-accent-hover: #b56200;
+  --theme-text: #111827;
+  --theme-text-muted: #6b7280;
+
+  /* Custom easing curves — Emil Kowalski's design philosophy */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.dark {
+  /* Dark mode */
+  --theme-bg: #111215;
+  --theme-surface: #1a1c22;
+  --theme-border: #2c2f36;
+  --theme-accent: #d97706;
+  --theme-accent-hover: #b56200;
+  --theme-text: #e8e6e3;
+  --theme-text-muted: #8c929e;
 }
 
 body {
-  @apply bg-surface-900 text-slate-100 font-sans min-h-screen antialiased;
+  @apply bg-ink-bg text-ink-text font-sans min-h-screen antialiased selection:bg-ink-accent/30 selection:text-white;
+  transition: background-color 300ms var(--ease-out), color 300ms var(--ease-out);
 }
 
-.glass-panel {
-  @apply bg-surface-800/80 backdrop-blur-md border border-white/10 rounded-2xl shadow-xl;
+/* ── Button press feedback ────────────────────────────────── */
+/* Every pressable element gets scale-down on :active */
+.btn-press {
+  transition: transform 160ms var(--ease-out), opacity 160ms var(--ease-out),
+              background-color 200ms ease, color 200ms ease, border-color 200ms ease,
+              box-shadow 200ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-press:hover {
+    opacity: 0.9;
+  }
+}
+
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+/* Pill button (solid background) */
+.btn-pill {
+  @apply rounded-full text-xs font-bold shadow-md;
+  transition: transform 160ms var(--ease-out), box-shadow 200ms ease;
+}
+
+.btn-pill:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-pill:hover {
+    transform: scale(1.02);
+  }
+}
+
+/* ── Book card ────────────────────────────────────────────── */
+.book-card {
+  @apply bg-ink-surface border border-ink-border/65 rounded-xl;
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .book-card:hover {
+    @apply border-ink-accent/50 shadow-lg;
+    box-shadow: 0 0 0 0 transparent, 0 10px 30px -10px color-mix(in srgb, var(--theme-accent) 10%, transparent);
+  }
+}
+
+/* ── Editorial title ──────────────────────────────────────── */
+.editorial-title {
+  @apply font-serif tracking-tight leading-tight;
+}
+
+/* ── Stagger animations for book grid ────────────────────── */
+@keyframes stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger-item {
+  opacity: 0;
+  animation: stagger-in 280ms var(--ease-out) forwards;
+}
+
+.stagger-item:nth-child(1)  { animation-delay: 0ms; }
+.stagger-item:nth-child(2)  { animation-delay: 40ms; }
+.stagger-item:nth-child(3)  { animation-delay: 80ms; }
+.stagger-item:nth-child(4)  { animation-delay: 120ms; }
+.stagger-item:nth-child(5)  { animation-delay: 160ms; }
+.stagger-item:nth-child(6)  { animation-delay: 200ms; }
+.stagger-item:nth-child(7)  { animation-delay: 240ms; }
+.stagger-item:nth-child(8)  { animation-delay: 280ms; }
+.stagger-item:nth-child(9)  { animation-delay: 320ms; }
+.stagger-item:nth-child(10) { animation-delay: 360ms; }
+.stagger-item:nth-child(n+11) { animation-delay: 400ms; }
+
+/* ── Page entrance ────────────────────────────────────────── */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: page-in 300ms var(--ease-out) both;
+}
+
+/* ── Reduced motion overrides ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .stagger-item,
+  .page-enter {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .btn-press:active,
+  .btn-pill:active {
+    transform: none;
+  }
+
+  body {
+    transition: none;
+  }
+}
+
+/* ── Book grid card hover (media-query gated) ─────────────── */
+@media (hover: hover) and (pointer: fine) {
+  /* Subtle highlight on hover */
+  .stagger-item:hover .book-cover {
+    border-color: color-mix(in srgb, var(--theme-accent) 60%, transparent);
+    box-shadow: 0 8px 24px -6px color-mix(in srgb, var(--theme-accent) 25%, transparent);
+  }
+
+  /* Reveal the bottom metadata bar */
+  .stagger-item:hover .book-meta {
+    opacity: 1;
+  }
+
+  /* Reveal delete button */
+  .stagger-item:hover .book-delete {
+    opacity: 1;
+  }
+
+  /* Logo link hover */
+  .logo-link:hover .logo-text {
+    color: var(--theme-accent);
+  }
 }

@@ -47,50 +47,64 @@ export function UploadDropzone({ onFileUpload }: UploadDropzoneProps) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] w-full p-6">
-      <div className="text-center mb-10 max-w-lg">
-        <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
-          Your Personal Library
-        </h1>
-        <p className="text-slate-400 text-lg">
-          Upload your favorite books in PDF or EPUB format and start reading instantly in a distraction-free environment.
-        </p>
-      </div>
-
-      <div 
-        className={`glass-panel w-full max-w-2xl p-12 flex flex-col items-center justify-center transition-all duration-300 ${
-          isDragging ? 'border-primary-500 scale-105 bg-surface-700/80 shadow-primary-500/20 shadow-2xl' : 'hover:border-slate-500 hover:bg-surface-700/50'
+    <div className="flex flex-col items-center justify-center w-full p-4">
+      <label 
+        className={`group relative w-full max-w-xl p-12 flex flex-col items-center justify-center rounded-2xl border cursor-pointer overflow-hidden ${
+          isDragging 
+            ? 'border-ink-accent bg-ink-surface/95 scale-[1.02] shadow-2xl shadow-ink-accent/20' 
+            : 'border-ink-border/50 bg-ink-surface/70 shadow-xl backdrop-blur-md'
         }`}
+        style={{transition: 'border-color 200ms ease, background-color 200ms ease, box-shadow 200ms ease, transform 200ms var(--ease-out)'}}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <UploadCloud className={`w-20 h-20 mb-6 transition-colors duration-300 ${isDragging ? 'text-primary-400' : 'text-slate-500'}`} />
-        <h2 className="text-2xl font-semibold mb-2">Drag & Drop your book here</h2>
-        <p className="text-slate-400 mb-8">Supports PDF and EPUB</p>
+        <input 
+          type="file" 
+          className="hidden" 
+          accept=".pdf,.epub,application/pdf,application/epub+zip"
+          onChange={handleFileChange}
+        />
         
-        <div className="flex gap-4 mb-8">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/50 border border-slate-700 text-sm text-slate-300">
-            <FileText size={16} className="text-red-400" /> PDF
+        {/* Animated Background Glow */}
+        <div 
+          className={`absolute inset-0 bg-gradient-to-b from-ink-accent/5 to-transparent pointer-events-none ${isDragging ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+          style={{transition: 'opacity 200ms ease'}}
+        />
+
+        <div 
+          className={`w-12 h-12 rounded-full border flex items-center justify-center mb-6 z-10 ${
+            isDragging 
+              ? 'border-ink-accent bg-ink-accent text-ink-bg' 
+              : 'border-ink-border/70 text-ink-text-muted'
+          }`}
+          style={{transition: 'border-color 200ms ease, background-color 200ms ease, color 200ms ease'}}
+        >
+          <UploadCloud className={`w-5 h-5 ${isDragging ? 'scale-110' : ''}`} style={{transition: 'transform 200ms var(--ease-out)'}} />
+        </div>
+        
+        <h2 className="font-serif text-2xl font-medium mb-2 z-10 text-ink-text group-hover:text-ink-text transition-colors">
+          {isDragging ? 'Drop it here' : 'Click or drag your book'}
+        </h2>
+        <p className="text-ink-text-muted text-sm mb-8 z-10 tracking-wide">
+          EPUB & PDF formats supported
+        </p>
+        
+        <div className="flex gap-4 z-10">
+          <div 
+            className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-ink-bg/50 border border-ink-border/50 text-xs font-semibold tracking-widest uppercase text-ink-text-muted backdrop-blur-sm"
+            style={{transition: 'border-color 150ms ease'}}
+          >
+            <FileText size={12} className="text-ink-accent/70" /> PDF
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/50 border border-slate-700 text-sm text-slate-300">
-            <BookOpen size={16} className="text-green-400" /> EPUB
+          <div 
+            className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-ink-bg/50 border border-ink-border/50 text-xs font-semibold tracking-widest uppercase text-ink-text-muted backdrop-blur-sm"
+            style={{transition: 'border-color 150ms ease'}}
+          >
+            <BookOpen size={12} className="text-ink-accent/70" /> EPUB
           </div>
         </div>
-
-        <label className="cursor-pointer relative overflow-hidden group">
-          <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          <span className="relative px-8 py-4 bg-primary-600 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-300 inline-block text-white">
-            Browse Files
-          </span>
-          <input 
-            type="file" 
-            className="hidden" 
-            accept=".pdf,.epub,application/pdf,application/epub+zip"
-            onChange={handleFileChange}
-          />
-        </label>
-      </div>
+      </label>
     </div>
   );
 }
