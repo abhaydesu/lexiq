@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { pdfjs, Document, Page } from 'react-pdf';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, X, ChevronDown } from 'lucide-react';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import type { ReaderTheme } from '../pages/Reader';
 
-// Initialize PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url,
@@ -13,17 +12,58 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 interface PdfReaderProps {
   file: File;
+  bookId: string;
   onClose: () => void;
   theme: ReaderTheme;
   onThemeChange: (theme: ReaderTheme) => void;
 }
 
-export function PdfReader({ file, onClose, theme, onThemeChange }: PdfReaderProps) {
-  const [numPages, setNumPages] = useState<number | null>(null);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [scale, setScale] = useState(1.2);
-  const [fileUrl, setFileUrl] = useState<string | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+const THEME_META: { value: ReaderTheme; label: string }[] = [
+  { value: 'ink',   label: 'Ink'   },
+  { value: 'paper', label: 'Paper' },
+  { value: 'sepia', label: 'Sepia' },
+];
+
+function getShell(theme: ReaderTheme) {
+  switch (theme) {
+    case 'paper': return {
+      bg: '#fcfaf2', surface: '#ffffff', border: '#e2e8f0',
+      text: '#000000', muted: '#64748b', accent: '#b45309',
+      filter: '',
+    };
+    case 'sepia': return {
+      bg: '#f5e6ce', surface: '#fcf2df', border: '#ddc89a',
+      text: '#000000', muted: '#9b7b55', accent: '#8b5e3c',
+      filter: 'sepia(100%) brightness(90%) hue-rotate(350deg)',
+    };
+    default: return {
+      bg: '#111215', surface: '#1a1c22', border: '#2c2f36',
+      text: '#ffffff', muted: '#8c929e', accent: '#d97706',
+      filter: 'invert(100%) hue-rotate(180deg) contrast(90%)',
+    };
+  }
+}
+
+export function PdfReader({ file, bookId, onClose, theme, onThemeChange }: PdfReaderProps) {
+  const [numPages,    setNumPages]   = useState<number | null>(null);
+  const [pageNumber,  setPageNumber] = useState<number>(() => {
+    const saved = localStorage.getItem(`lexiq-pdf-page-${bookId}`);
+    return saved ? parseInt(saved, 10) : 1;
+  });
+  const [scale,      setScale]      = useState(1.2);
+  const [fileUrl,    setFileUrl]    = useState<string | null>(null);
+  const [pageInput,  setPageInput]  = useState('');
+  const [themeOpen,  setThemeOpen]  = useState(false);
+
+  const containerRef  = useRef<HTMLDivElement>(null);
+  const themeRef      = useRef<HTMLDivElement>(null);
+  const numPagesRef   = useRef<number>(0);
+  const pageNumberRef = useRef<number>(pageNumber);
+  const leftArrowRef  = useRef<HTMLButtonElement>(null);
+  const rightArrowRef = useRef<HTMLButtonElement>(null);
+
+  // Keep refs in sync
+  useEffect(() => { pageNumberRef.current = pageNumber; }, [pageNumber]);
 
   useEffect(() => {
     const url = URL.createObjectURL(file);
@@ -31,93 +71,265 @@ export function PdfReader({ file, onClose, theme, onThemeChange }: PdfReaderProp
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
-    setNumPages(numPages);
-    setPageNumber(1);
+  // Close theme dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (!themeRef.current?.contains(e.target as Node)) setThemeOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const jumpToPage = useCallback((targetPage: number) => {
+    const max  = numPagesRef.current || 1;
+    const next = Math.max(1, Math.min(targetPage, max));
+    if (next !== pageNumberRef.current) {
+      pageNumberRef.current = next;
+      setPageNumber(next);
+      localStorage.setItem(`lexiq-pdf-page-${bookId}`, String(next));
+      containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [bookId]);
+
+  const lastNavTime = useRef(0);
+  // Stable navigate function using refs — no stale closures
+  const navigate = useCallback((delta: number) => {
+    const now = Date.now();
+    if (now - lastNavTime.current < 200) return;
+    lastNavTime.current = now;
+    jumpToPage(pageNumberRef.current + delta);
+  }, [jumpToPage]);
+
+  // Keyboard navigation and zoom shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Ignore when focused on an input
+      if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+      // Prevent multiple page turns if key is held down
+      if (e.repeat) return;
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        leftArrowRef.current?.click();
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        rightArrowRef.current?.click();
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === '=') {
+        e.preventDefault();
+        setScale(s => parseFloat(Math.min(s + 0.15, 3).toFixed(2)));
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        e.preventDefault();
+        setScale(s => parseFloat(Math.max(s - 0.15, 0.5).toFixed(2)));
+      }
+    };
+
+    const blockKeyup = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    document.addEventListener('keydown', handler);
+    document.addEventListener('keyup', blockKeyup, true);
+    return () => {
+      document.removeEventListener('keydown', handler);
+      document.removeEventListener('keyup', blockKeyup, true);
+    };
+  }, []);
+
+  function onDocumentLoadSuccess({ numPages: n }: { numPages: number }) {
+    setNumPages(n);
+    numPagesRef.current = n;
+    // Clamp saved page to valid range
+    setPageNumber(p => {
+      const clamped = Math.max(1, Math.min(p, n));
+      pageNumberRef.current = clamped;
+      return clamped;
+    });
   }
 
-  const goToPrevPage = () => setPageNumber(prev => Math.max(prev - 1, 1));
-  const goToNextPage = () => setPageNumber(prev => Math.min(prev + 1, numPages || 1));
-  const zoomIn = () => setScale(prev => Math.min(prev + 0.2, 3));
-  const zoomOut = () => setScale(prev => Math.max(prev - 0.2, 0.6));
+  const goToPage = useCallback((raw: string | number) => {
+    const n = typeof raw === 'string' ? parseInt(raw, 10) : raw;
+    if (!isNaN(n)) jumpToPage(n);
+  }, [jumpToPage]);
 
-  if (!fileUrl) return null;
+  const handlePageInputBlur = () => {
+    if (pageInput !== '') {
+      goToPage(pageInput);
+    }
+    setPageInput('');
+  };
 
-  // Derive styles based on theme
-  const getThemeStyles = () => {
-    switch (theme) {
-      case 'paper':
-        return { bg: 'bg-[#fcfaf2]', text: 'text-slate-800', surface: 'bg-white', border: 'border-slate-200', filter: '' };
-      case 'sepia':
-        return { bg: 'bg-[#f5e6ce]', text: 'text-[#433422]', surface: 'bg-[#fcf2df]', border: 'border-[#e0d0b8]', filter: 'sepia(100%) brightness(90%) hue-rotate(350deg)' };
-      case 'ink':
-      default:
-        return { bg: 'bg-ink-bg', text: 'text-ink-text', surface: 'bg-ink-surface', border: 'border-ink-border', filter: 'invert(100%) hue-rotate(180deg) contrast(90%)' };
+  const handlePageInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      (e.target as HTMLInputElement).blur();
+    }
+    if (e.key === 'Escape') {
+      setPageInput('');
+      (e.target as HTMLInputElement).blur();
     }
   };
 
-  const themeStyles = getThemeStyles();
+  if (!fileUrl) return null;
+
+  const shell    = getShell(theme);
+  const progress = numPages ? (pageNumber / numPages) * 100 : 0;
 
   return (
-    <div className={`flex flex-col h-screen w-full ${themeStyles.bg} overflow-hidden relative selection:bg-ink-accent/30 transition-colors duration-300`}>
-      {/* Header Toolbar */}
-      <div className={`absolute top-0 left-0 right-0 z-10 ${themeStyles.surface}/90 backdrop-blur-md border-b ${themeStyles.border} p-4 flex items-center justify-between transition-colors duration-300`}>
-        <div className="flex items-center gap-4">
-          <button 
+    <div
+      style={{ backgroundColor: shell.bg, color: shell.text }}
+      className="flex flex-col h-screen w-full overflow-hidden relative"
+    >
+      {/* ── Top progress bar ─────────────────────────────────── */}
+      <div style={{ backgroundColor: shell.border }} className="absolute top-0 left-0 right-0 h-[2px] z-20">
+        <div
+          style={{
+            width:           `${progress}%`,
+            backgroundColor: shell.accent,
+            transition:      'width 300ms cubic-bezier(0.23,1,0.32,1)',
+          }}
+          className="h-full"
+        />
+      </div>
+
+      {/* ── Toolbar ──────────────────────────────────────────── */}
+      <div
+        style={{ backgroundColor: `${shell.surface}f0`, borderColor: shell.border }}
+        className="absolute top-[2px] left-0 right-0 z-10 border-b backdrop-blur-md flex items-center justify-between px-3 py-2.5 gap-4"
+      >
+        {/* Left: back + title */}
+        <div className="flex items-center gap-2 min-w-0">
+          <button
             onClick={onClose}
-            className={`p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors ${themeStyles.text}`}
-            title="Close Book"
+            style={{ color: shell.text }}
+            className="reader-ctrl-btn btn-press p-2 shrink-0"
+            title="Back to library"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
-          <div className={`font-serif font-medium ${themeStyles.text} truncate max-w-[150px] md:max-w-md`}>
-            {file.name}
-          </div>
+          <span
+            style={{ color: shell.muted }}
+            className="text-[11px] truncate hidden sm:block max-w-[180px] select-none"
+          >
+            {file.name.replace(/\.pdf$/i, '')}
+          </span>
         </div>
 
-        <div className="flex items-center gap-1 md:gap-2">
-          <div className="relative mr-1">
-            <select
-              value={theme}
-              onChange={(e) => onThemeChange(e.target.value as ReaderTheme)}
-              className={`appearance-none bg-transparent hover:bg-black/5 dark:hover:bg-white/5 rounded-lg pl-3 pr-8 py-1.5 text-xs font-medium tracking-wide uppercase transition-colors outline-none cursor-pointer border ${themeStyles.border} ${themeStyles.text}`}
+        {/* Right: zoom + theme */}
+        <div className="flex items-center gap-0.5 shrink-0">
+          {/* Zoom */}
+          <button
+            onClick={() => setScale(s => parseFloat(Math.max(s - 0.15, 0.5).toFixed(2)))}
+            style={{ color: shell.text }}
+            className="reader-ctrl-btn btn-press p-2"
+            title="Zoom out (Ctrl −)"
+          >
+            <ZoomOut size={15} />
+          </button>
+          <span
+            style={{ color: shell.muted }}
+            className="text-[11px] font-mono tabular-nums w-9 text-center select-none"
+          >
+            {Math.round(scale * 100)}%
+          </span>
+          <button
+            onClick={() => setScale(s => parseFloat(Math.min(s + 0.15, 3).toFixed(2)))}
+            style={{ color: shell.text }}
+            className="reader-ctrl-btn btn-press p-2"
+            title="Zoom in (Ctrl +)"
+          >
+            <ZoomIn size={15} />
+          </button>
+
+          <div style={{ backgroundColor: shell.border }} className="w-px h-4 mx-1.5 shrink-0" />
+
+          {/* Theme dropdown */}
+          <div className="relative" ref={themeRef}>
+            <button
+              onClick={() => setThemeOpen(o => !o)}
+              style={{ color: shell.text, borderColor: themeOpen ? shell.accent : shell.border }}
+              className="reader-ctrl-btn flex items-center gap-1 px-2 py-1.5 border rounded-lg text-[11px] font-medium"
+              title="Change theme"
             >
-              <option value="ink" className="bg-ink-surface text-ink-text">Ink</option>
-              <option value="paper" className="bg-white text-slate-800">Paper</option>
-              <option value="sepia" className="bg-[#fcf2df] text-[#433422]">Sepia</option>
-            </select>
-            <div className={`absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${themeStyles.text}`}>
-              <ChevronDown size={14} />
-            </div>
+              <span
+                className="w-3 h-3 rounded-full shrink-0"
+                style={{ backgroundColor: shell.bg, border: `1.5px solid ${shell.border}` }}
+              />
+              <span className="hidden sm:inline">{THEME_META.find(t => t.value === theme)?.label}</span>
+              <ChevronDown
+                size={10}
+                style={{
+                  opacity:    0.5,
+                  transform:  themeOpen ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 150ms ease',
+                }}
+              />
+            </button>
+            {themeOpen && (
+              <div
+                style={{ backgroundColor: shell.surface, borderColor: shell.border }}
+                className="absolute right-0 top-full mt-2 border rounded-xl shadow-2xl z-[70] py-1 w-28 overflow-hidden"
+              >
+                {THEME_META.map(t => {
+                  const s = getShell(t.value);
+                  return (
+                    <button
+                      key={t.value}
+                      onClick={() => { onThemeChange(t.value); setThemeOpen(false); }}
+                      style={{
+                        backgroundColor: theme === t.value ? `${shell.accent}22` : 'transparent',
+                        color:           theme === t.value ? shell.accent : shell.text,
+                      }}
+                      className="reader-ctrl-btn w-full text-left px-3 py-2 text-[11px] flex items-center gap-2"
+                    >
+                      <span
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: s.bg, border: `1.5px solid ${s.border}` }}
+                      />
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
-          <div className="w-px h-4 bg-black/10 dark:bg-white/10 mx-1"></div>
-          <button onClick={zoomOut} className={`p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors ${themeStyles.text}`}>
-            <ZoomOut size={16} />
-          </button>
-          <span className={`text-xs font-mono font-medium w-12 text-center ${themeStyles.text}`}>{Math.round(scale * 100)}%</span>
-          <button onClick={zoomIn} className={`p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors ${themeStyles.text}`}>
-            <ZoomIn size={16} />
-          </button>
         </div>
       </div>
 
-      {/* PDF Content Area */}
-      <div className={`flex-1 overflow-auto flex justify-center pt-24 pb-24 ${themeStyles.bg}`} ref={containerRef}>
+      {/* ── PDF Content ───────────────────────────────────────── */}
+      <div
+        ref={containerRef}
+        style={{ backgroundColor: shell.bg, paddingTop: '54px', paddingBottom: '60px' }}
+        className="flex-1 overflow-auto flex justify-center"
+      >
         <Document
           file={fileUrl}
           onLoadSuccess={onDocumentLoadSuccess}
           className="flex flex-col items-center"
           loading={
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ink-accent"></div>
+            <div className="flex items-center justify-center h-64">
+              <div
+                className="w-7 h-7 rounded-full animate-spin"
+                style={{ border: `2px solid ${shell.border}`, borderBottomColor: shell.accent }}
+              />
             </div>
           }
         >
-          <div style={{ filter: themeStyles.filter }} className="transition-all duration-300">
-            <Page 
-              pageNumber={pageNumber} 
-              scale={scale} 
-              className="shadow-2xl border border-ink-border/30 rounded"
+          {/* key={pageNumber} triggers the pdf-page-enter animation on page change */}
+          <div
+            key={pageNumber}
+            className="pdf-page-enter"
+            style={{ filter: shell.filter, transition: 'filter 300ms ease' }}
+          >
+            <Page
+              pageNumber={pageNumber}
+              scale={scale}
+              className="shadow-2xl"
               renderTextLayer={true}
               renderAnnotationLayer={true}
             />
@@ -125,27 +337,55 @@ export function PdfReader({ file, onClose, theme, onThemeChange }: PdfReaderProp
         </Document>
       </div>
 
-      {/* Bottom Navigation */}
+      {/* ── Bottom navigation bar ─────────────────────────────── */}
       {numPages && (
-        <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 z-10 ${themeStyles.surface} border ${themeStyles.border} px-6 py-3 flex items-center gap-6 rounded-full shadow-2xl transition-colors duration-300`}>
-          <button 
-            onClick={goToPrevPage} 
+        <div
+          style={{ borderColor: shell.border, backgroundColor: `${shell.surface}f0` }}
+          className="absolute bottom-0 left-0 right-0 border-t backdrop-blur-md px-4 py-2.5 flex items-center justify-center gap-3"
+        >
+          <button
+            ref={leftArrowRef}
+            onClick={() => navigate(-1)}
             disabled={pageNumber <= 1}
-            className={`p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${themeStyles.text}`}
+            style={{ color: shell.text }}
+            className="reader-ctrl-btn btn-press p-1.5 rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Previous page (←)"
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft size={18} />
           </button>
-          
-          <div className={`text-xs font-semibold tracking-wider ${themeStyles.text} uppercase opacity-80`}>
-            Page {pageNumber} of {numPages}
+
+          {/* Page indicator with jump-to input */}
+          <div className="flex items-center gap-1.5">
+            <span style={{ color: shell.muted }} className="text-[11px] select-none">Page</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={pageInput !== '' ? pageInput : pageNumber}
+              onFocus={() => setPageInput(String(pageNumber))}
+              onChange={e => setPageInput(e.target.value)}
+              onKeyDown={handlePageInputKeyDown}
+              onBlur={handlePageInputBlur}
+              style={{
+                backgroundColor: shell.surface,
+                borderColor:     shell.border,
+                color:           shell.text,
+                outline:         'none',
+              }}
+              className="w-10 text-center text-[11px] font-mono tabular-nums rounded-md border py-0.5 focus:border-current"
+              title="Type a page number and press Enter"
+            />
+            <span style={{ color: shell.muted }} className="text-[11px] select-none">of {numPages}</span>
           </div>
-          
-          <button 
-            onClick={goToNextPage} 
+
+          <button
+            ref={rightArrowRef}
+            onClick={() => navigate(1)}
             disabled={pageNumber >= numPages}
-            className={`p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${themeStyles.text}`}
+            style={{ color: shell.text }}
+            className="reader-ctrl-btn btn-press p-1.5 rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Next page (→)"
           >
-            <ChevronRight size={20} />
+            <ChevronRight size={18} />
           </button>
         </div>
       )}

@@ -1,26 +1,36 @@
 import { Sun, Moon, ArrowUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../components/ThemeProvider';
+import { useState, useEffect } from 'react';
 
 export function Home() {
   const { theme, toggleTheme } = useTheme();
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
     <div className="bg-ink-bg min-h-screen text-ink-text flex flex-col selection:bg-ink-accent/30 selection:text-white transition-colors duration-300 relative">
       
       {/* Full-Screen Background Image for Hero */}
       <div 
-        className="absolute top-0 left-0 w-full h-[100vh] z-0 transition-all duration-700 bg-no-repeat"
+        className="absolute top-0 left-0 w-full h-[120vh] z-0 transition-all duration-700 bg-no-repeat"
         style={{
           backgroundImage: `url(${theme === 'dark' ? '/dark-home-dither.png' : '/light-home-dither.png'})`,
           backgroundPosition: 'top center',
-          backgroundSize: '100% auto',
+          backgroundSize: 'cover',
         }}
       />
       
       {/* Progressive Blur Overlay */}
       <div 
-        className="absolute top-0 left-0 w-full h-[100vh] z-0 backdrop-blur-[24px] pointer-events-none"
+        className="absolute top-0 left-0 w-full h-[120vh] z-0 backdrop-blur-[24px] pointer-events-none"
         style={{
           maskImage: 'linear-gradient(to bottom, transparent 40%, black 100%)',
           WebkitMaskImage: 'linear-gradient(to bottom, transparent 40%, black 100%)'
@@ -28,14 +38,30 @@ export function Home() {
       />
 
       {/* Multi-stop gradient fade */}
-      <div className="absolute top-0 left-0 w-full h-[100vh] z-0 pointer-events-none">
+      <div className="absolute top-0 left-0 w-full h-[120vh] z-0 pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-[30vh] bg-gradient-to-b from-ink-bg/30 to-transparent" />
-        <div className="absolute bottom-0 left-0 w-full h-[60vh] bg-gradient-to-t from-ink-bg via-ink-bg/70 to-transparent" />
+        <div className="absolute bottom-0 left-0 w-full h-[15vh] bg-gradient-to-t from-ink-bg to-transparent" />
       </div>
 
       {/* ── Floating Pill Header */}
-      <div className="w-full pt-6 px-4 md:px-6 relative z-20 flex justify-center">
-        <header className="w-full max-w-3xl px-3 py-2 flex items-center justify-between bg-ink-surface/70 backdrop-blur-xl border border-ink-border/50 rounded-full shadow-lg shadow-black/10" style={{transition: 'background-color 300ms var(--ease-out), border-color 300ms var(--ease-out)'}}>
+      <div 
+        className="w-full fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-300"
+        style={{
+          paddingTop: scrolled ? '12px' : '24px',
+          paddingLeft: '16px',
+          paddingRight: '16px',
+        }}
+      >
+        <header 
+          className="w-full flex items-center justify-between bg-ink-surface/70 backdrop-blur-xl border border-ink-border/50 rounded-full shadow-lg shadow-black/10 transition-all duration-300"
+          style={{
+            maxWidth: scrolled ? '44rem' : '48rem', // shrinks from max-w-3xl (48rem) to max-w-2xl (42/44rem)
+            paddingTop: scrolled ? '6px' : '10px',
+            paddingBottom: scrolled ? '6px' : '10px',
+            paddingLeft: '12px',
+            paddingRight: '12px',
+          }}
+        >
           <div className="flex items-center pl-4">
             <span className="text-xl font-semibold tracking-wide drop-shadow-sm">
               <span className="font-serif">lex<span className="italic">iq</span></span>
@@ -60,14 +86,15 @@ export function Home() {
               to="/library"
               className="btn-pill px-5 py-2.5 bg-ink-text text-ink-bg"
             >
-              Start reading
+              Library
             </Link>
           </div>
         </header>
       </div>
 
+
       {/* Hero Section */}
-      <section className="relative z-10 flex flex-col items-center justify-center min-h-[85vh] px-6 text-center -mt-10">
+      <section className="relative z-10 flex flex-col items-center justify-center min-h-[110vh] px-6 text-center -mt-10">
         <h1 className="text-7xl md:text-[8rem] lg:text-[10rem] font-medium tracking-tight mb-4 drop-shadow-2xl flex items-center justify-center text-white">
           <span className="font-serif">Lex<span className="italic">iq</span></span>
         </h1>
@@ -140,10 +167,14 @@ export function Home() {
           <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-center">
 
             {/* Image slot — drop in a screenshot here */}
-            <div className="aspect-[4/3] rounded-2xl bg-ink-surface border border-ink-border/50 overflow-hidden flex items-center justify-center order-2 md:order-1">
-              <span className="text-xs uppercase tracking-widest text-ink-text-muted/40 font-semibold select-none">
-                Reader screenshot
-              </span>
+            <div className="aspect-[4/3]  overflow-hidden order-2 md:order-1"
+             style={{
+               backgroundImage: `url(${theme === 'dark' ? '/art-1-dark.png' : '/art-1.png'})`,
+               backgroundSize: 'contain',
+               backgroundPosition: 'center',
+               backgroundRepeat: 'no-repeat'
+             }}
+            >
             </div>
 
             <div className="order-1 md:order-2">

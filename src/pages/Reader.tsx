@@ -78,11 +78,11 @@ export function Reader() {
   }
 
   if (book.type === 'pdf') {
-    return <PdfReader file={book.file} onClose={handleClose} theme={theme} onThemeChange={changeTheme} />;
+    return <PdfReader file={book.file} bookId={id!} onClose={handleClose} theme={theme} onThemeChange={changeTheme} />;
   }
 
   if (book.type === 'epub') {
-    return <EpubReader file={book.file} onClose={handleClose} theme={theme} onThemeChange={changeTheme} />;
+    return <EpubReader file={book.file} bookId={id!} onClose={handleClose} theme={theme} onThemeChange={changeTheme} />;
   }
 
   return null;

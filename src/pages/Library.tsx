@@ -100,7 +100,7 @@ export function Library() {
               className="btn-pill px-5 py-2.5 bg-ink-text text-ink-bg flex items-center gap-2"
             >
               <Plus size={14} />
-              Import a book
+              Add book
             </button>
             <input
               type="file"
