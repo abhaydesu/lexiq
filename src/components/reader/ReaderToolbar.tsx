@@ -41,7 +41,7 @@ export function ReaderToolbar({
           style={{ color: shell.muted }}
           className="text-[11px] truncate hidden sm:block max-w-[220px] select-none"
         >
-          {title}
+          {title.replace(/_/g, ' ')}
         </span>
       </div>
 

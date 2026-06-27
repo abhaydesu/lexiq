@@ -31,7 +31,7 @@ export function Header({
   }, [isFixed]);
 
   const containerClass = isFixed 
-    ? "w-full fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-300"
+    ? "w-full fixed top-0 left-0 right-0 z-50 flex justify-center transition-[padding] duration-200 ease-out"
     : "w-full pt-6 px-4 md:px-6 relative z-20 flex justify-center mb-8";
     
   const containerStyle = isFixed ? {
@@ -42,7 +42,7 @@ export function Header({
 
   const currentMaxWidth = (isFixed && scrolled) ? shrinkWidthClass : maxWidthClass;
 
-  const headerClass = `w-full ${currentMaxWidth} flex items-center justify-between bg-ink-surface/70 backdrop-blur-xl border border-ink-border/50 rounded-full shadow-lg shadow-black/10 transition-all duration-300`;
+  const headerClass = `w-full ${currentMaxWidth} flex items-center justify-between bg-ink-surface/70 backdrop-blur-xl border border-ink-border/50 rounded-full shadow-lg shadow-black/10 transition-[max-width,background-color,border-color,padding] duration-200 ease-out`;
   
   const headerStyle = {
     paddingTop: isFixed && scrolled ? '6px' : '10px',

@@ -11,7 +11,7 @@ export function Home() {
       
       {/* Full-Screen Background Image for Hero */}
       <div 
-        className="absolute top-0 left-0 w-full h-[120vh] z-0 transition-all duration-700 bg-no-repeat"
+        className="absolute top-0 left-0 w-full h-[120vh] z-0 transition-[transform,opacity] duration-500 ease-out bg-no-repeat"
         style={{
           backgroundImage: `url(${theme === 'dark' ? '/dark-home-dither.png' : '/light-home-dither.png'})`,
           backgroundPosition: 'top center',

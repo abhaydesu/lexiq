@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { ReactReader, ReactReaderStyle } from 'react-reader';
-import { ChevronDown, ChevronLeft, ChevronRight, Minus, Plus, Type } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Minus, Plus, Type, Highlighter, BookOpen, Trash2 } from 'lucide-react';
 import type { ReaderTheme } from '../pages/Reader';
+import { v4 as uuidv4 } from 'uuid';
+import { HighlightMenu } from './reader/HighlightMenu';
+import type { Highlight } from '../lib/supabase-mock';
 
 interface EpubReaderProps {
   file: File;
@@ -38,13 +41,50 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
   const registeredRef  = useRef(false);
 
   // Typography
-  const [fontFamily, setFontFamily] = useState<FontFamily>('sans');
-  const [fontSize,   setFontSize]   = useState(17);
+  const [fontFamily, setFontFamily] = useState<FontFamily>(() => {
+    return (localStorage.getItem('lexiq-font-family') as FontFamily) || 'sans';
+  });
+  const [fontSize, setFontSize] = useState(() => {
+    return parseInt(localStorage.getItem('lexiq-font-size') || '17', 10);
+  });
 
   // Progress
   const [currentLoc,   setCurrentLoc]   = useState(0);
   const [totalLocs,    setTotalLocs]    = useState(0);
   const [loadingLocs,  setLoadingLocs]  = useState(false);
+
+  // Highlights
+  const [highlights, setHighlights] = useState<Highlight[]>(() => {
+    try {
+      const data = localStorage.getItem(`lexiq-highlights-${bookId}`);
+      return data ? JSON.parse(data) : [];
+    } catch (_) {
+      return [];
+    }
+  });
+
+  const [selection, setSelection] = useState<{
+    cfiRange: string;
+    text: string;
+    x: number;
+    y: number;
+    contents: any;
+  } | null>(null);
+  const [editingHighlight, setEditingHighlight] = useState<Highlight | null>(null);
+  const [showHighlightMenu, setShowHighlightMenu] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<'chapters' | 'highlights'>('chapters');
+
+  const highlightsRef = useRef<Highlight[]>(highlights);
+  useEffect(() => { highlightsRef.current = highlights; }, [highlights]);
+
+  const bookIdRef = useRef<string>(bookId);
+  useEffect(() => { bookIdRef.current = bookId; }, [bookId]);
+
+  // Save highlights whenever they change
+  useEffect(() => {
+    localStorage.setItem(`lexiq-highlights-${bookId}`, JSON.stringify(highlights));
+  }, [highlights, bookId]);
 
   // Dropdowns
   const [fontOpen,  setFontOpen]  = useState(false);
@@ -107,6 +147,179 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
     };
   }, []);
 
+  // Highlight handling functions
+  const handleHighlightClick = useCallback((e: MouseEvent, h: Highlight) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const rendition = renditionRef.current;
+    if (!rendition) return;
+    
+    try {
+      const contentsList = rendition.getContents() || [];
+      const contents = contentsList[0]; 
+      const iframe = contents?.document?.defaultView?.frameElement as HTMLIFrameElement;
+      if (!iframe || !contents) return;
+
+      const iframeRect = iframe.getBoundingClientRect();
+      const range = contents.range(h.cfi_range);
+      if (!range) return;
+      const rect = range.getBoundingClientRect();
+      
+      const x = iframeRect.left + rect.left + rect.width / 2;
+      const y = iframeRect.top + rect.top;
+
+      setEditingHighlight(h);
+      setSelection({
+        cfiRange: h.cfi_range,
+        text: h.text,
+        x,
+        y,
+        contents,
+      });
+      setShowHighlightMenu(true);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  const applyHighlightsToRendition = useCallback(() => {
+    const rendition = renditionRef.current;
+    if (!rendition) return;
+
+    highlightsRef.current.forEach(h => {
+      try {
+        rendition.annotations.remove(h.cfi_range, 'highlight');
+        rendition.annotations.remove(h.cfi_range, 'mark');
+
+        rendition.annotations.add(
+          'highlight',
+          h.cfi_range,
+          { id: h.id },
+          (e: MouseEvent) => handleHighlightClick(e, h),
+          'epubjs-hl',
+          { fill: h.color, 'fill-opacity': '0.35', style: 'mix-blend-mode: multiply; cursor: pointer;' }
+        );
+
+        if (h.note) {
+          rendition.annotations.add(
+            'mark',
+            h.cfi_range,
+            { id: h.id },
+            (e: MouseEvent) => handleHighlightClick(e, h)
+          );
+        }
+      } catch (e) {
+        console.error("Failed to apply highlight:", e);
+      }
+    });
+  }, [handleHighlightClick]);
+
+  const deleteHighlight = useCallback((id: string) => {
+    const target = highlights.find(h => h.id === id);
+    if (target && renditionRef.current) {
+      try {
+        renditionRef.current.annotations.remove(target.cfi_range, 'highlight');
+        renditionRef.current.annotations.remove(target.cfi_range, 'mark');
+      } catch (e) {
+        console.error("Failed to remove annotation:", e);
+      }
+    }
+    setHighlights(prev => prev.filter(h => h.id !== id));
+    setShowHighlightMenu(false);
+    setSelection(null);
+    setEditingHighlight(null);
+  }, [highlights]);
+
+  const handleSaveHighlight = useCallback((color: string, note?: string) => {
+    if (!selection) return;
+
+    if (editingHighlight) {
+      setHighlights(prev => prev.map(h => 
+        h.id === editingHighlight.id 
+          ? { ...h, color, note, created_at: new Date().toISOString() }
+          : h
+      ));
+    } else {
+      const newHighlight: Highlight = {
+        id: uuidv4(),
+        user_id: 'mock-user',
+        book_id: bookIdRef.current,
+        cfi_range: selection.cfiRange,
+        text: selection.text,
+        color,
+        note,
+        created_at: new Date().toISOString(),
+      };
+      setHighlights(prev => [...prev, newHighlight]);
+    }
+    
+    // Clear selection UI
+    if (selection.contents) {
+      selection.contents.window.getSelection().removeAllRanges();
+    }
+    setShowHighlightMenu(false);
+    setSelection(null);
+    setEditingHighlight(null);
+  }, [selection, editingHighlight]);
+
+  const handleCancelHighlight = useCallback(() => {
+    if (selection && selection.contents) {
+      selection.contents.window.getSelection().removeAllRanges();
+    }
+    setShowHighlightMenu(false);
+    setSelection(null);
+    setEditingHighlight(null);
+  }, [selection]);
+
+  const handleContainerClick = useCallback((e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const button = target.closest('button');
+    
+    const isToggle = button && button.style.position === 'absolute' && (button.style.left === '10px' || button.style.left === '-246px');
+    const isBackdrop = target.style.position === 'absolute' && target.style.left === '256px' && target.style.zIndex === '1';
+    const isChapterLink = button && 
+                         button.closest('div[style*="border-right"]') !== null && 
+                         !button.classList.contains('sidebar-tab-btn') &&
+                         !button.classList.contains('sidebar-delete-btn');
+
+    if (isToggle) {
+      setIsSidebarOpen(prev => !prev);
+    } else if (isBackdrop) {
+      setIsSidebarOpen(false);
+    } else if (isChapterLink) {
+      setIsSidebarOpen(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener('click', handleContainerClick);
+    return () => document.removeEventListener('click', handleContainerClick);
+  }, [handleContainerClick]);
+
+  // Sync highlights to rendition when layout changes (font size, font family, highlights)
+  useEffect(() => {
+    applyHighlightsToRendition();
+    
+    // Also run after a short delay to allow browser layout reflow to complete
+    const timer = setTimeout(() => {
+      applyHighlightsToRendition();
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [highlights, fontFamily, fontSize, applyHighlightsToRendition]);
+
+  // Re-sync highlights on window resize to match the new container bounds
+  useEffect(() => {
+    const handleResize = () => {
+      setTimeout(() => {
+        applyHighlightsToRendition();
+      }, 150);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [applyHighlightsToRendition]);
+
   // Apply theme when it changes — also re-strip inline colors so the new text color takes effect
   useEffect(() => {
     const rendition = renditionRef.current;
@@ -151,17 +364,32 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
   const applyFontSize = useCallback((size: number) => {
     const clamped = Math.max(12, Math.min(28, size));
     setFontSize(clamped);
+    localStorage.setItem('lexiq-font-size', clamped.toString());
     renditionRef.current?.themes.fontSize(`${clamped}px`);
   }, []);
 
   const applyFontFamily = useCallback((family: FontFamily) => {
     setFontFamily(family);
-    renditionRef.current?.themes.override('font-family', FONT_STACKS[family]);
+    localStorage.setItem('lexiq-font-family', family);
+    renditionRef.current?.themes.override('font-family', `${FONT_STACKS[family]} !important`);
+    
+    // Force immediate update on currently rendered pages
+    try {
+      const contentsList: any[] = renditionRef.current?.getContents ? renditionRef.current.getContents() : [];
+      contentsList.forEach((contents: any) => {
+        if (contents?.document?.body) {
+          contents.document.body.style.setProperty('font-family', FONT_STACKS[family], 'important');
+        }
+      });
+    } catch (_) {}
   }, []);
 
   // Ref so that the rendered callback can read the latest theme without stale closure
   const themeRef2 = useRef<ReaderTheme>(theme);
   useEffect(() => { themeRef2.current = theme; }, [theme]);
+  
+  const fontRef2 = useRef<FontFamily>(fontFamily);
+  useEffect(() => { fontRef2.current = fontFamily; }, [fontFamily]);
 
   // Strip inline color styles from every text node in the iframe document.
   // This is the only reliable way to defeat inline style="color:..." in book HTML.
@@ -207,21 +435,53 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
     }
 
     rendition.themes.select(theme);
+    rendition.themes.override('font-family', `${FONT_STACKS[fontFamily]} !important`);
+    rendition.themes.fontSize(`${fontSize}px`);
 
     // After every page render, strip all inline color styles from book HTML
     rendition.on('rendered', () => {
       const currentTheme = themeRef2.current;
+      const currentFont = fontRef2.current;
       const textColor = currentTheme === 'ink' ? '#ffffff' : '#000000';
       try {
         const contentsList: any[] = rendition.getContents ? rendition.getContents() : [];
         contentsList.forEach((contents: any) => {
           const doc: Document | undefined = contents?.document;
-          if (doc) stripInlineColors(doc, textColor);
+          if (!doc) return;
+          
+          if (doc.body) {
+            doc.body.style.setProperty('font-family', FONT_STACKS[currentFont], 'important');
+          }
+          stripInlineColors(doc, textColor);
         });
+        applyHighlightsToRendition();
       } catch (_) {}
     });
 
+    // Listen for text selection to show the highlight menu
+    rendition.on('selected', (cfiRange: string, contents: any) => {
+      const selectionObj = contents.window.getSelection();
+      const text = selectionObj.toString().trim();
+      if (!text) return;
 
+      const range = selectionObj.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      const iframe = contents.document.defaultView.frameElement as HTMLIFrameElement;
+      if (!iframe) return;
+
+      const iframeRect = iframe.getBoundingClientRect();
+      const x = iframeRect.left + rect.left + rect.width / 2;
+      const y = iframeRect.top + rect.top;
+
+      setSelection({
+        cfiRange,
+        text,
+        x,
+        y,
+        contents,
+      });
+      setShowHighlightMenu(true);
+    });
 
     // Attach key listener to iframe document using hook to capture before epubjs/browser default handlers
     rendition.hooks.content.register((contents: any) => {
@@ -236,17 +496,59 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
         styleEl = newEl;
       }
       (styleEl as HTMLStyleElement).textContent = `
+        /* Force font inheritance for all non-code elements */
+        *:not(body):not(pre):not(pre *):not(code):not(code *) {
+          font-family: inherit !important;
+        }
         /* All non-code, non-link elements (but NOT body itself) inherit body color.
            Excluding body prevents the * selector from clobbering the theme's body color. */
         *:not(body):not(pre):not(pre *):not(code):not(code *):not(a[href]):not(a[href] *) {
           color: inherit !important;
         }
+        /* Style highlights to be clickable */
+        .epubjs-hl {
+          cursor: pointer !important;
+          pointer-events: auto !important;
+        }
+        /* Style note marks (small document icon) */
+        a[ref="epubjs-mk"] {
+          display: inline-block !important;
+          width: 14px !important;
+          height: 14px !important;
+          background-color: #d97706 !important;
+          border-radius: 9999px !important;
+          cursor: pointer !important;
+          z-index: 10 !important;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'%3E%3C/path%3E%3C/svg%3E") !important;
+          background-repeat: no-repeat !important;
+          background-position: center !important;
+          margin-left: 3px !important;
+          transform: translateY(2px) !important;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+          transition: transform 100ms ease !important;
+        }
+        a[ref="epubjs-mk"]:hover {
+          transform: translateY(2px) scale(1.15) !important;
+        }
       `;
 
       // Also set body color immediately and synchronously so it takes effect before paint
       const currentTheme = themeRef2.current;
+      const currentFont = fontRef2.current;
       const bodyColor = currentTheme === 'ink' ? '#ffffff' : '#000000';
-      if (doc.body) doc.body.style.setProperty('color', bodyColor, 'important');
+      if (doc.body) {
+        doc.body.style.setProperty('color', bodyColor, 'important');
+        doc.body.style.setProperty('font-family', FONT_STACKS[currentFont], 'important');
+      }
+
+      // Hide selection menu when clicking inside the iframe
+      doc.addEventListener('click', () => {
+        const selectionObj = contents.window.getSelection();
+        if (selectionObj && selectionObj.isCollapsed) {
+          setShowHighlightMenu(false);
+          setSelection(null);
+        }
+      });
 
       doc.addEventListener('keydown', (e: KeyboardEvent) => {
         if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
@@ -321,17 +623,31 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
       backgroundColor: shell.surface,
       color:           shell.text,
       borderRight:     `1px solid ${shell.border}`,
+      paddingTop:      '100px',
+      transition:      'background-color 300ms var(--ease-out), border-color 300ms var(--ease-out)',
+    },
+    tocAreaButton: {
+      ...ReactReaderStyle.tocAreaButton,
+      fontFamily:      'inherit',
+      fontSize:        '12px',
+      color:           shell.muted,
+      borderBottom:    `1px solid ${shell.border}22`,
+      padding:         '12px 20px',
+      transition:      'all 180ms ease',
     },
     tocButtonExpanded: {
       ...ReactReaderStyle.tocButtonExpanded,
-      backgroundColor: shell.surface,
+      backgroundColor: 'transparent',
+      left: '-246px',
     },
     tocButtonBar: {
       ...ReactReaderStyle.tocButtonBar,
-      background: shell.border,
+      background: shell.text,
+      transition: 'none',
     },
-    // Hide the built-in react-reader arrows; we use our own
+    // Hide the built-in react-reader arrows and title; we use our own
     arrow: { display: 'none' },
+    titleArea: { display: 'none' },
   }), [shell]);
 
   if (!buffer) {
@@ -431,18 +747,123 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
 
       {/* ── Reader area ──────────────────────────────────────── */}
       <div
-        className="flex-1 relative overflow-hidden"
+        className="epub-reader-container flex-1 relative overflow-hidden"
         style={{ paddingTop: '52px', paddingBottom: '36px' }}
       >
         <ReactReader
           url={buffer}
-          title={file.name}
+          title=""
           location={location}
           locationChanged={handleLocationChange}
           getRendition={getRendition}
           epubOptions={{ flow: 'paginated' }}
           readerStyles={readerStyles}
         />
+
+        {/* Custom Sidebar Overlay inside the TOC sidebar space */}
+        {isSidebarOpen && (
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: '52px',
+              bottom: '36px',
+              width: '256px',
+              zIndex: 45,
+              backgroundColor: shell.surface,
+              borderRight: `1px solid ${shell.border}`,
+              display: 'flex',
+              flexDirection: 'column',
+              pointerEvents: 'none',
+            }}
+          >
+            {/* Tab Selector */}
+            <div className="flex border-b" style={{ borderColor: shell.border, paddingLeft: '50px', pointerEvents: 'auto' }}>
+              <button
+                onClick={() => setSidebarTab('chapters')}
+                style={{
+                  color: sidebarTab === 'chapters' ? shell.accent : shell.muted,
+                  borderBottomColor: sidebarTab === 'chapters' ? shell.accent : 'transparent',
+                }}
+                className="sidebar-tab-btn flex-1 py-3.5 text-[10px] font-bold border-b-2 flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <BookOpen size={11} />
+                Chapters
+              </button>
+              <button
+                onClick={() => setSidebarTab('highlights')}
+                style={{
+                  color: sidebarTab === 'highlights' ? shell.accent : shell.muted,
+                  borderBottomColor: sidebarTab === 'highlights' ? shell.accent : 'transparent',
+                }}
+                className="sidebar-tab-btn flex-1 py-3.5 text-[10px] font-bold border-b-2 flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <Highlighter size={11} />
+                Notes ({highlights.length})
+              </button>
+            </div>
+
+            {/* Highlights List Tab content (covers TOC if active) */}
+            {sidebarTab === 'highlights' && (
+              <div 
+                style={{ pointerEvents: 'auto', backgroundColor: shell.surface }}
+                className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 bg-ink-surface"
+              >
+                {highlights.length === 0 ? (
+                  <div style={{ color: shell.muted }} className="text-[10px] text-center py-10 select-none">
+                    No highlights or notes yet.<br />Select text to create one.
+                  </div>
+                ) : (
+                  highlights.map(h => (
+                    <div
+                      key={h.id}
+                      style={{ backgroundColor: `${h.color}15`, borderColor: shell.border }}
+                      className="p-2 border rounded-lg flex flex-col gap-1.5 relative group hover:border-amber-500/30 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-1">
+                          <span style={{ backgroundColor: h.color }} className="w-2 h-2 rounded-full shrink-0" />
+                          <span style={{ color: shell.muted }} className="text-[8px] font-mono select-none">
+                            {new Date(h.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteHighlight(h.id);
+                          }}
+                          style={{ color: shell.muted }}
+                          className="sidebar-delete-btn opacity-0 group-hover:opacity-100 hover:!text-red-500 p-0.5 rounded transition-opacity cursor-pointer"
+                          title="Delete highlight"
+                        >
+                          <Trash2 size={10} />
+                        </button>
+                      </div>
+                      
+                      <p
+                        onClick={() => {
+                          renditionRef.current?.display(h.cfi_range);
+                        }}
+                        className="text-[10px] leading-relaxed line-clamp-3 italic cursor-pointer hover:underline text-left"
+                      >
+                        "{h.text}"
+                      </p>
+
+                      {h.note && (
+                        <div 
+                          style={{ borderLeftColor: h.color, color: shell.text }}
+                          className="text-[9px] pl-2 py-0.5 border-l-2 leading-relaxed bg-black/5 dark:bg-white/5 rounded-r text-left"
+                        >
+                          {h.note}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Floating nav arrows (outside iframe, so they receive pointer events) */}
         <button
@@ -481,6 +902,20 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
               : '—'}
         </span>
       </div>
+
+      {/* Floating Highlight / Selection Menu */}
+      {showHighlightMenu && selection && (
+        <HighlightMenu
+          x={selection.x}
+          y={selection.y}
+          onSave={handleSaveHighlight}
+          onDelete={editingHighlight ? () => deleteHighlight(editingHighlight.id) : undefined}
+          onClose={handleCancelHighlight}
+          initialColor={editingHighlight?.color}
+          initialNote={editingHighlight?.note}
+          shell={shell}
+        />
+      )}
     </div>
   );
 }

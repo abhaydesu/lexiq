@@ -128,7 +128,7 @@ body {
 
 .stagger-item {
   opacity: 0;
-  animation: stagger-in 280ms var(--ease-out) forwards;
+  animation: stagger-in 200ms var(--ease-out) forwards;
 }
 
 .stagger-item:nth-child(1)  { animation-delay: 0ms; }
@@ -156,7 +156,7 @@ body {
 }
 
 .page-enter {
-  animation: page-in 300ms var(--ease-out) both;
+  animation: page-in 200ms var(--ease-out) both;
 }
 
 /* ── Reduced motion overrides ─────────────────────────────── */
@@ -219,29 +219,56 @@ body {
   background-color: rgba(128, 128, 128, 0.2);
 }
 
-/* Floating prev/next nav arrows */
+/* Large clickable areas for left/right page navigation */
 .reader-nav-btn {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 100px; /* Leave space at top-left for the TOC hamburger button */
+  bottom: 36px; /* above bottom progress bar */
+  width: 60px; /* narrowed to prevent overlap with selectable text */
   z-index: 30;
-  padding: 10px;
-  border-radius: 9999px;
   background: transparent;
   cursor: pointer;
-  opacity: 0.2;
-  transition: opacity 200ms ease, background-color 150ms ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  /* Keep icons invisible until hovered to avoid distraction */
+  opacity: 0; 
+  transition: opacity 200ms ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .reader-nav-btn:hover {
-    opacity: 0.9;
-    background-color: rgba(128, 128, 128, 0.12);
+    opacity: 1; /* Show arrows on hover */
   }
 }
 
-.reader-nav-btn--left  { left: 6px; }
-.reader-nav-btn--right { right: 6px; }
+/* Position and pad the inner arrows */
+.reader-nav-btn--left {
+  left: 0;
+  justify-content: flex-start;
+  padding-left: 24px;
+}
+
+.reader-nav-btn--right {
+  right: 0;
+  justify-content: flex-end;
+  padding-right: 24px;
+}
+
+.reader-nav-btn svg {
+  opacity: 0.3; /* Subtle icon opacity when revealed */
+  transition: opacity 150ms ease;
+}
+
+.reader-nav-btn:hover svg {
+  opacity: 0.7;
+}
+
+/* Hide navigation areas completely when TOC sidebar is open */
+.epub-reader-container:has(div[style*="transform: translateX"]) .reader-nav-btn {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
 
 /* PDF page fade-in on page change */
 @keyframes pdf-page-in {
@@ -257,5 +284,68 @@ body {
   .pdf-page-enter {
     animation: none;
   }
+}
+
+/* ── EPUB Reader TOC (Table of Contents) sidebar customization ── */
+/* Add elegant box shadow and backdrop-blur to the slide-out TOC area */
+.epub-reader-container > div > div:nth-child(2) > div:first-child {
+  box-shadow: 12px 0 42px -10px rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-right: 1px solid var(--theme-border) !important;
+}
+
+/* Modern styling for the TOC buttons */
+.epub-reader-container > div > div:nth-child(2) button {
+  font-family: var(--font-sans) !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--theme-border) 25%, transparent) !important;
+  transition: all 220ms var(--ease-out) !important;
+  padding: 14px 24px !important;
+}
+
+/* Hover effect with subtle indent and color highlight */
+.epub-reader-container > div > div:nth-child(2) button:hover {
+  background-color: color-mix(in srgb, var(--theme-accent) 8%, transparent) !important;
+  color: var(--theme-accent) !important;
+  padding-left: 32px !important;
+}
+
+/* Style the TOC sidebar close/overlay background */
+.epub-reader-container > div > div:nth-child(2) > div:last-child {
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  background-color: rgba(0, 0, 0, 0.25) !important;
+  transition: opacity 300ms ease !important;
+}
+
+/* Transform hamburger menu lines into an 'X' close button when sidebar is open */
+.epub-reader-container:has(div[style*="transform: translateX"]) button[style*="left: -"] span:nth-child(1) {
+  transform: rotate(45deg) !important;
+  top: 50% !important;
+  background-color: var(--theme-text) !important;
+}
+
+.epub-reader-container:has(div[style*="transform: translateX"]) button[style*="left: -"] span:nth-child(2) {
+  transform: rotate(-45deg) !important;
+  top: 50% !important;
+  background-color: var(--theme-text) !important;
+}
+
+/* Floating Highlight Popover Animation */
+@keyframes menu-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.highlight-menu-pop {
+  animation: menu-pop-in 160ms var(--ease-out) forwards;
 }
 
