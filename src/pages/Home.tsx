@@ -1,19 +1,10 @@
-import { Sun, Moon, ArrowUp } from 'lucide-react';
+import { ArrowUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../components/ThemeProvider';
-import { useState, useEffect } from 'react';
+import { Header } from '../components/common/Header';
 
 export function Home() {
-  const { theme, toggleTheme } = useTheme();
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  const { theme } = useTheme();
 
   return (
     <div className="bg-ink-bg min-h-screen text-ink-text flex flex-col selection:bg-ink-accent/30 selection:text-white transition-colors duration-300 relative">
@@ -44,53 +35,25 @@ export function Home() {
       </div>
 
       {/* ── Floating Pill Header */}
-      <div 
-        className="w-full fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-300"
-        style={{
-          paddingTop: scrolled ? '12px' : '24px',
-          paddingLeft: '16px',
-          paddingRight: '16px',
-        }}
-      >
-        <header 
-          className="w-full flex items-center justify-between bg-ink-surface/70 backdrop-blur-xl border border-ink-border/50 rounded-full shadow-lg shadow-black/10 transition-all duration-300"
-          style={{
-            maxWidth: scrolled ? '44rem' : '48rem', // shrinks from max-w-3xl (48rem) to max-w-2xl (42/44rem)
-            paddingTop: scrolled ? '6px' : '10px',
-            paddingBottom: scrolled ? '6px' : '10px',
-            paddingLeft: '12px',
-            paddingRight: '12px',
-          }}
-        >
-          <div className="flex items-center pl-4">
-            <span className="text-xl font-semibold tracking-wide drop-shadow-sm">
-              <span className="font-serif">lex<span className="italic">iq</span></span>
-            </span>
-          </div>
-          
-          <nav className="hidden md:flex items-center gap-8 text-xs tracking-wider font-medium text-ink-text">
+      <Header 
+        isFixed={true}
+        maxWidthClass="max-w-3xl"
+        shrinkWidthClass="max-w-2xl"
+        navItems={
+          <>
             <a href="#features" className="hover:text-ink-accent" style={{transition: 'color 150ms ease'}}>Features</a>
             <a href="#privacy" className="hover:text-ink-accent" style={{transition: 'color 150ms ease'}}>Privacy</a>
-          </nav>
-
-          <div className="flex items-center gap-2 pr-1">
-            <button 
-              onClick={toggleTheme}
-              className="btn-press p-2 rounded-full text-ink-text"
-              style={{backgroundColor: 'transparent'}}
-              title="Toggle theme"
-            >
-              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
-            <Link
-              to="/library"
-              className="btn-pill px-5 py-2.5 bg-ink-text text-ink-bg"
-            >
-              Library
-            </Link>
-          </div>
-        </header>
-      </div>
+          </>
+        }
+        rightContent={
+          <Link
+            to="/library"
+            className="btn-pill px-5 py-2.5 bg-ink-text text-ink-bg"
+          >
+            Library
+          </Link>
+        }
+      />
 
 
       {/* Hero Section */}

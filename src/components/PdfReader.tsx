@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { pdfjs, Document, Page } from 'react-pdf';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, X, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import type { ReaderTheme } from '../pages/Reader';
@@ -18,31 +18,9 @@ interface PdfReaderProps {
   onThemeChange: (theme: ReaderTheme) => void;
 }
 
-const THEME_META: { value: ReaderTheme; label: string }[] = [
-  { value: 'ink',   label: 'Ink'   },
-  { value: 'paper', label: 'Paper' },
-  { value: 'sepia', label: 'Sepia' },
-];
-
-function getShell(theme: ReaderTheme) {
-  switch (theme) {
-    case 'paper': return {
-      bg: '#fcfaf2', surface: '#ffffff', border: '#e2e8f0',
-      text: '#000000', muted: '#64748b', accent: '#b45309',
-      filter: '',
-    };
-    case 'sepia': return {
-      bg: '#f5e6ce', surface: '#fcf2df', border: '#ddc89a',
-      text: '#000000', muted: '#9b7b55', accent: '#8b5e3c',
-      filter: 'sepia(100%) brightness(90%) hue-rotate(350deg)',
-    };
-    default: return {
-      bg: '#111215', surface: '#1a1c22', border: '#2c2f36',
-      text: '#ffffff', muted: '#8c929e', accent: '#d97706',
-      filter: 'invert(100%) hue-rotate(180deg) contrast(90%)',
-    };
-  }
-}
+import { getShell } from '../lib/theme';
+import { ReaderToolbar } from './reader/ReaderToolbar';
+import { ReaderProgress } from './reader/ReaderProgress';
 
 export function PdfReader({ file, bookId, onClose, theme, onThemeChange }: PdfReaderProps) {
   const [numPages,    setNumPages]   = useState<number | null>(null);
@@ -53,10 +31,8 @@ export function PdfReader({ file, bookId, onClose, theme, onThemeChange }: PdfRe
   const [scale,      setScale]      = useState(1.2);
   const [fileUrl,    setFileUrl]    = useState<string | null>(null);
   const [pageInput,  setPageInput]  = useState('');
-  const [themeOpen,  setThemeOpen]  = useState(false);
 
   const containerRef  = useRef<HTMLDivElement>(null);
-  const themeRef      = useRef<HTMLDivElement>(null);
   const numPagesRef   = useRef<number>(0);
   const pageNumberRef = useRef<number>(pageNumber);
   const leftArrowRef  = useRef<HTMLButtonElement>(null);
@@ -70,15 +46,6 @@ export function PdfReader({ file, bookId, onClose, theme, onThemeChange }: PdfRe
     setFileUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [file]);
-
-  // Close theme dropdown on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (!themeRef.current?.contains(e.target as Node)) setThemeOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
 
   const jumpToPage = useCallback((targetPage: number) => {
     const max  = numPagesRef.current || 1;
@@ -186,120 +153,39 @@ export function PdfReader({ file, bookId, onClose, theme, onThemeChange }: PdfRe
       className="flex flex-col h-screen w-full overflow-hidden relative"
     >
       {/* ── Top progress bar ─────────────────────────────────── */}
-      <div style={{ backgroundColor: shell.border }} className="absolute top-0 left-0 right-0 h-[2px] z-20">
-        <div
-          style={{
-            width:           `${progress}%`,
-            backgroundColor: shell.accent,
-            transition:      'width 300ms cubic-bezier(0.23,1,0.32,1)',
-          }}
-          className="h-full"
-        />
-      </div>
+      <ReaderProgress theme={theme} progress={progress} />
 
       {/* ── Toolbar ──────────────────────────────────────────── */}
-      <div
-        style={{ backgroundColor: `${shell.surface}f0`, borderColor: shell.border }}
-        className="absolute top-[2px] left-0 right-0 z-10 border-b backdrop-blur-md flex items-center justify-between px-3 py-2.5 gap-4"
+      <ReaderToolbar
+        title={file.name.replace(/\.pdf$/i, '')}
+        theme={theme}
+        onThemeChange={onThemeChange}
+        onClose={onClose}
       >
-        {/* Left: back + title */}
-        <div className="flex items-center gap-2 min-w-0">
-          <button
-            onClick={onClose}
-            style={{ color: shell.text }}
-            className="reader-ctrl-btn btn-press p-2 shrink-0"
-            title="Back to library"
-          >
-            <X size={18} />
-          </button>
-          <span
-            style={{ color: shell.muted }}
-            className="text-[11px] truncate hidden sm:block max-w-[180px] select-none"
-          >
-            {file.name.replace(/\.pdf$/i, '')}
-          </span>
-        </div>
-
-        {/* Right: zoom + theme */}
-        <div className="flex items-center gap-0.5 shrink-0">
-          {/* Zoom */}
-          <button
-            onClick={() => setScale(s => parseFloat(Math.max(s - 0.15, 0.5).toFixed(2)))}
-            style={{ color: shell.text }}
-            className="reader-ctrl-btn btn-press p-2"
-            title="Zoom out (Ctrl −)"
-          >
-            <ZoomOut size={15} />
-          </button>
-          <span
-            style={{ color: shell.muted }}
-            className="text-[11px] font-mono tabular-nums w-9 text-center select-none"
-          >
-            {Math.round(scale * 100)}%
-          </span>
-          <button
-            onClick={() => setScale(s => parseFloat(Math.min(s + 0.15, 3).toFixed(2)))}
-            style={{ color: shell.text }}
-            className="reader-ctrl-btn btn-press p-2"
-            title="Zoom in (Ctrl +)"
-          >
-            <ZoomIn size={15} />
-          </button>
-
-          <div style={{ backgroundColor: shell.border }} className="w-px h-4 mx-1.5 shrink-0" />
-
-          {/* Theme dropdown */}
-          <div className="relative" ref={themeRef}>
-            <button
-              onClick={() => setThemeOpen(o => !o)}
-              style={{ color: shell.text, borderColor: themeOpen ? shell.accent : shell.border }}
-              className="reader-ctrl-btn flex items-center gap-1 px-2 py-1.5 border rounded-lg text-[11px] font-medium"
-              title="Change theme"
-            >
-              <span
-                className="w-3 h-3 rounded-full shrink-0"
-                style={{ backgroundColor: shell.bg, border: `1.5px solid ${shell.border}` }}
-              />
-              <span className="hidden sm:inline">{THEME_META.find(t => t.value === theme)?.label}</span>
-              <ChevronDown
-                size={10}
-                style={{
-                  opacity:    0.5,
-                  transform:  themeOpen ? 'rotate(180deg)' : 'none',
-                  transition: 'transform 150ms ease',
-                }}
-              />
-            </button>
-            {themeOpen && (
-              <div
-                style={{ backgroundColor: shell.surface, borderColor: shell.border }}
-                className="absolute right-0 top-full mt-2 border rounded-xl shadow-2xl z-[70] py-1 w-28 overflow-hidden"
-              >
-                {THEME_META.map(t => {
-                  const s = getShell(t.value);
-                  return (
-                    <button
-                      key={t.value}
-                      onClick={() => { onThemeChange(t.value); setThemeOpen(false); }}
-                      style={{
-                        backgroundColor: theme === t.value ? `${shell.accent}22` : 'transparent',
-                        color:           theme === t.value ? shell.accent : shell.text,
-                      }}
-                      className="reader-ctrl-btn w-full text-left px-3 py-2 text-[11px] flex items-center gap-2"
-                    >
-                      <span
-                        className="w-3 h-3 rounded-full shrink-0"
-                        style={{ backgroundColor: s.bg, border: `1.5px solid ${s.border}` }}
-                      />
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+        {/* Zoom */}
+        <button
+          onClick={() => setScale(s => parseFloat(Math.max(s - 0.15, 0.5).toFixed(2)))}
+          style={{ color: shell.text }}
+          className="reader-ctrl-btn btn-press p-2"
+          title="Zoom out (Ctrl −)"
+        >
+          <ZoomOut size={15} />
+        </button>
+        <span
+          style={{ color: shell.muted }}
+          className="text-[11px] font-mono tabular-nums w-9 text-center select-none"
+        >
+          {Math.round(scale * 100)}%
+        </span>
+        <button
+          onClick={() => setScale(s => parseFloat(Math.min(s + 0.15, 3).toFixed(2)))}
+          style={{ color: shell.text }}
+          className="reader-ctrl-btn btn-press p-2"
+          title="Zoom in (Ctrl +)"
+        >
+          <ZoomIn size={15} />
+        </button>
+      </ReaderToolbar>
 
       {/* ── PDF Content ───────────────────────────────────────── */}
       <div

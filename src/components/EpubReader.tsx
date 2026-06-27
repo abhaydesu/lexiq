@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { ReactReader, ReactReaderStyle } from 'react-reader';
-import { X, ChevronDown, ChevronLeft, ChevronRight, Minus, Plus, Type } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Minus, Plus, Type } from 'lucide-react';
 import type { ReaderTheme } from '../pages/Reader';
 
 interface EpubReaderProps {
@@ -25,19 +25,9 @@ const FONT_LABELS: Record<FontFamily, string> = {
   mono: 'Monospace',
 };
 
-const THEME_META: { value: ReaderTheme; label: string }[] = [
-  { value: 'ink',   label: 'Ink'   },
-  { value: 'paper', label: 'Paper' },
-  { value: 'sepia', label: 'Sepia' },
-];
-
-function getShell(theme: ReaderTheme) {
-  switch (theme) {
-    case 'paper': return { bg: '#fcfaf2', surface: '#ffffff', border: '#e2e8f0', text: '#000000', muted: '#64748b', accent: '#b45309' };
-    case 'sepia': return { bg: '#f5e6ce', surface: '#fcf2df', border: '#ddc89a', text: '#000000', muted: '#9b7b55', accent: '#8b5e3c' };
-    default:      return { bg: '#111215', surface: '#1a1c22', border: '#2c2f36', text: '#ffffff', muted: '#8c929e', accent: '#d97706' };
-  }
-}
+import { getShell } from '../lib/theme';
+import { ReaderToolbar } from './reader/ReaderToolbar';
+import { ReaderProgress } from './reader/ReaderProgress';
 
 export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: EpubReaderProps) {
   const [location, setLocation] = useState<string | number>(() =>
@@ -57,9 +47,7 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
   const [loadingLocs,  setLoadingLocs]  = useState(false);
 
   // Dropdowns
-  const [themeOpen, setThemeOpen] = useState(false);
   const [fontOpen,  setFontOpen]  = useState(false);
-  const themeRef = useRef<HTMLDivElement>(null);
   const fontRef  = useRef<HTMLDivElement>(null);
 
   // Load EPUB buffer
@@ -68,7 +56,6 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
   // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (!themeRef.current?.contains(e.target as Node)) setThemeOpen(false);
       if (!fontRef.current?.contains(e.target  as Node)) setFontOpen(false);
     };
     document.addEventListener('mousedown', handler);
@@ -364,165 +351,83 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
       className="flex flex-col h-screen w-full relative overflow-hidden"
     >
       {/* ── Top progress bar ─────────────────────────────────── */}
-      <div style={{ backgroundColor: shell.border }} className="absolute top-0 left-0 right-0 h-[2px] z-[60]">
-        <div
-          style={{
-            width:           `${progress}%`,
-            backgroundColor: shell.accent,
-            transition:      'width 500ms cubic-bezier(0.23,1,0.32,1)',
-          }}
-          className="h-full"
-        />
-      </div>
+      <ReaderProgress theme={theme} progress={progress} />
 
       {/* ── Toolbar ──────────────────────────────────────────── */}
-      <div
-        style={{ backgroundColor: `${shell.surface}f0`, borderColor: shell.border }}
-        className="absolute top-[2px] left-0 right-0 z-50 border-b backdrop-blur-md flex items-center justify-between px-3 py-2.5 gap-4"
+      <ReaderToolbar
+        title={file.name.replace(/\.epub$/i, '')}
+        theme={theme}
+        onThemeChange={onThemeChange}
+        onClose={onClose}
+        onThemeDropdownOpenChange={(isOpen) => isOpen && setFontOpen(false)}
       >
-        {/* Left: back + title */}
-        <div className="flex items-center gap-2 min-w-0">
+        {/* Font size */}
+        <button
+          onClick={() => applyFontSize(fontSize - 2)}
+          style={{ color: shell.text }}
+          className="reader-ctrl-btn btn-press p-2"
+          title="Smaller text"
+        >
+          <Minus size={13} />
+        </button>
+        <span
+          style={{ color: shell.muted }}
+          className="text-[11px] font-mono tabular-nums w-6 text-center select-none"
+        >
+          {fontSize}
+        </span>
+        <button
+          onClick={() => applyFontSize(fontSize + 2)}
+          style={{ color: shell.text }}
+          className="reader-ctrl-btn btn-press p-2"
+          title="Larger text"
+        >
+          <Plus size={13} />
+        </button>
+
+        <div style={{ backgroundColor: shell.border }} className="w-px h-4 mx-1.5 shrink-0" />
+
+        {/* Font family dropdown */}
+        <div className="relative" ref={fontRef}>
           <button
-            onClick={onClose}
-            style={{ color: shell.text }}
-            className="reader-ctrl-btn btn-press p-2 shrink-0"
-            title="Back to library"
+            onClick={() => setFontOpen(o => !o)}
+            style={{ color: shell.text, borderColor: fontOpen ? shell.accent : shell.border }}
+            className="reader-ctrl-btn flex items-center gap-1 px-2 py-1.5 border rounded-lg text-[11px] font-medium"
+            title="Change typeface"
           >
-            <X size={18} />
+            <Type size={12} />
+            <span className="hidden sm:inline">{fontFamily === 'sans' ? 'Sans' : fontFamily === 'serif' ? 'Serif' : 'Mono'}</span>
+            <ChevronDown
+              size={10}
+              style={{
+                opacity:    0.5,
+                transform:  fontOpen ? 'rotate(180deg)' : 'none',
+                transition: 'transform 150ms ease',
+              }}
+            />
           </button>
-          <span
-            style={{ color: shell.muted }}
-            className="text-[11px] truncate hidden sm:block max-w-[220px] select-none"
-          >
-            {file.name.replace(/\.epub$/i, '')}
-          </span>
-        </div>
-
-        {/* Right: typography + theme */}
-        <div className="flex items-center gap-0.5 shrink-0">
-
-          {/* Font size */}
-          <button
-            onClick={() => applyFontSize(fontSize - 2)}
-            style={{ color: shell.text }}
-            className="reader-ctrl-btn btn-press p-2"
-            title="Smaller text"
-          >
-            <Minus size={13} />
-          </button>
-          <span
-            style={{ color: shell.muted }}
-            className="text-[11px] font-mono tabular-nums w-6 text-center select-none"
-          >
-            {fontSize}
-          </span>
-          <button
-            onClick={() => applyFontSize(fontSize + 2)}
-            style={{ color: shell.text }}
-            className="reader-ctrl-btn btn-press p-2"
-            title="Larger text"
-          >
-            <Plus size={13} />
-          </button>
-
-          <div style={{ backgroundColor: shell.border }} className="w-px h-4 mx-1.5 shrink-0" />
-
-          {/* Font family dropdown */}
-          <div className="relative" ref={fontRef}>
-            <button
-              onClick={() => { setFontOpen(o => !o); setThemeOpen(false); }}
-              style={{ color: shell.text, borderColor: fontOpen ? shell.accent : shell.border }}
-              className="reader-ctrl-btn flex items-center gap-1 px-2 py-1.5 border rounded-lg text-[11px] font-medium"
-              title="Change typeface"
+          {fontOpen && (
+            <div
+              style={{ backgroundColor: shell.surface, borderColor: shell.border }}
+              className="absolute right-0 top-full mt-2 border rounded-xl shadow-2xl z-[70] py-1 w-36 overflow-hidden"
             >
-              <Type size={12} />
-              <span className="hidden sm:inline">{fontFamily === 'sans' ? 'Sans' : fontFamily === 'serif' ? 'Serif' : 'Mono'}</span>
-              <ChevronDown
-                size={10}
-                style={{
-                  opacity:    0.5,
-                  transform:  fontOpen ? 'rotate(180deg)' : 'none',
-                  transition: 'transform 150ms ease',
-                }}
-              />
-            </button>
-            {fontOpen && (
-              <div
-                style={{ backgroundColor: shell.surface, borderColor: shell.border }}
-                className="absolute right-0 top-full mt-2 border rounded-xl shadow-2xl z-[70] py-1 w-36 overflow-hidden"
-              >
-                {(['sans', 'serif', 'mono'] as FontFamily[]).map(f => (
-                  <button
-                    key={f}
-                    onClick={() => { applyFontFamily(f); setFontOpen(false); }}
-                    style={{
-                      backgroundColor: fontFamily === f ? `${shell.accent}22` : 'transparent',
-                      color:           fontFamily === f ? shell.accent : shell.text,
-                    }}
-                    className="reader-ctrl-btn w-full text-left px-3 py-2 text-[11px]"
-                  >
-                    {FONT_LABELS[f]}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={{ backgroundColor: shell.border }} className="w-px h-4 mx-1.5 shrink-0" />
-
-          {/* Theme dropdown */}
-          <div className="relative" ref={themeRef}>
-            <button
-              onClick={() => { setThemeOpen(o => !o); setFontOpen(false); }}
-              style={{ color: shell.text, borderColor: themeOpen ? shell.accent : shell.border }}
-              className="reader-ctrl-btn flex items-center gap-1 px-2 py-1.5 border rounded-lg text-[11px] font-medium"
-              title="Change theme"
-            >
-              <span
-                className="w-3 h-3 rounded-full shrink-0"
-                style={{ backgroundColor: shell.bg, border: `1.5px solid ${shell.border}` }}
-              />
-              <span className="hidden sm:inline">{THEME_META.find(t => t.value === theme)?.label}</span>
-              <ChevronDown
-                size={10}
-                style={{
-                  opacity:    0.5,
-                  transform:  themeOpen ? 'rotate(180deg)' : 'none',
-                  transition: 'transform 150ms ease',
-                }}
-              />
-            </button>
-            {themeOpen && (
-              <div
-                style={{ backgroundColor: shell.surface, borderColor: shell.border }}
-                className="absolute right-0 top-full mt-2 border rounded-xl shadow-2xl z-[70] py-1 w-28 overflow-hidden"
-              >
-                {THEME_META.map(t => {
-                  const s = getShell(t.value);
-                  return (
-                    <button
-                      key={t.value}
-                      onClick={() => { onThemeChange(t.value); setThemeOpen(false); }}
-                      style={{
-                        backgroundColor: theme === t.value ? `${shell.accent}22` : 'transparent',
-                        color:           theme === t.value ? shell.accent : shell.text,
-                      }}
-                      className="reader-ctrl-btn w-full text-left px-3 py-2 text-[11px] flex items-center gap-2"
-                    >
-                      <span
-                        className="w-3 h-3 rounded-full shrink-0"
-                        style={{ backgroundColor: s.bg, border: `1.5px solid ${s.border}` }}
-                      />
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
+              {(['sans', 'serif', 'mono'] as FontFamily[]).map(f => (
+                <button
+                  key={f}
+                  onClick={() => { applyFontFamily(f); setFontOpen(false); }}
+                  style={{
+                    backgroundColor: fontFamily === f ? `${shell.accent}22` : 'transparent',
+                    color:           fontFamily === f ? shell.accent : shell.text,
+                  }}
+                  className="reader-ctrl-btn w-full text-left px-3 py-2 text-[11px]"
+                >
+                  {FONT_LABELS[f]}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
+      </ReaderToolbar>
 
       {/* ── Reader area ──────────────────────────────────────── */}
       <div
