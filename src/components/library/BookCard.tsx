@@ -8,6 +8,8 @@ interface BookCardProps {
 }
 
 export function BookCard({ book, onDelete }: BookCardProps) {
+  const cleanName = book.name.replace(/_/g, ' ');
+
   return (
     <Link 
       to={`/read/${book.id}`}
@@ -43,7 +45,7 @@ export function BookCard({ book, onDelete }: BookCardProps) {
                 {book.type}
               </span>
               <h3 className="font-serif font-medium text-sm md:text-base line-clamp-4 leading-snug text-ink-text" style={{transition: 'color 200ms ease'}}>
-                {book.name}
+                {cleanName}
               </h3>
             </div>
           </>
@@ -65,7 +67,7 @@ export function BookCard({ book, onDelete }: BookCardProps) {
       
       {/* Below Cover Label */}
       <div className="text-xs text-ink-text-muted px-1 flex flex-col items-start gap-1">
-        <span className="font-medium text-ink-text line-clamp-1 w-full">{book.name}</span>
+        <span className="font-medium text-ink-text line-clamp-1 w-full">{cleanName}</span>
       </div>
     </Link>
   );
