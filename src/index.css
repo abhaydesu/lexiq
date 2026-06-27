@@ -236,6 +236,14 @@ body {
   transition: opacity 200ms ease;
 }
 
+/* On mobile, make nav buttons thinner and always invisible (swipe is primary) */
+@media (max-width: 640px) {
+  .reader-nav-btn {
+    width: 36px;
+    top: 60px;
+  }
+}
+
 @media (hover: hover) and (pointer: fine) {
   .reader-nav-btn:hover {
     opacity: 1; /* Show arrows on hover */
@@ -253,6 +261,15 @@ body {
   right: 0;
   justify-content: flex-end;
   padding-right: 24px;
+}
+
+@media (max-width: 640px) {
+  .reader-nav-btn--left {
+    padding-left: 8px;
+  }
+  .reader-nav-btn--right {
+    padding-right: 8px;
+  }
 }
 
 .reader-nav-btn svg {
@@ -305,11 +322,20 @@ body {
   padding: 14px 24px !important;
 }
 
+@media (max-width: 640px) {
+  .epub-reader-container > div > div:nth-child(2) button {
+    padding: 12px 16px !important;
+    font-size: 13px !important;
+  }
+}
+
 /* Hover effect with subtle indent and color highlight */
-.epub-reader-container > div > div:nth-child(2) button:hover {
-  background-color: color-mix(in srgb, var(--theme-accent) 8%, transparent) !important;
-  color: var(--theme-accent) !important;
-  padding-left: 32px !important;
+@media (hover: hover) and (pointer: fine) {
+  .epub-reader-container > div > div:nth-child(2) button:hover {
+    background-color: color-mix(in srgb, var(--theme-accent) 8%, transparent) !important;
+    color: var(--theme-accent) !important;
+    padding-left: 32px !important;
+  }
 }
 
 /* Style the TOC sidebar close/overlay background */
@@ -349,3 +375,27 @@ body {
   animation: menu-pop-in 160ms var(--ease-out) forwards;
 }
 
+/* ── Mobile Responsive Overrides ─────────────────────────── */
+
+/* Make book delete buttons always visible on touch devices */
+@media (pointer: coarse) {
+  .stagger-item .book-delete {
+    opacity: 1 !important;
+  }
+  .stagger-item .book-meta {
+    opacity: 1 !important;
+  }
+}
+
+/* Tighter spacing on mobile for header pill */
+@media (max-width: 480px) {
+  .btn-pill {
+    padding: 8px 14px;
+    font-size: 11px;
+  }
+}
+
+/* Ensure the TOC hamburger button sits on top of our custom overlay */
+.epub-reader-container button[style*="left:"] {
+  z-index: 60 !important;
+}

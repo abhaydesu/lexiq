@@ -58,7 +58,7 @@ export function Home() {
 
       {/* Hero Section */}
       <section className="relative z-10 flex flex-col items-center justify-center min-h-[110vh] px-6 text-center -mt-10">
-        <h1 className="text-7xl md:text-[8rem] lg:text-[10rem] font-medium tracking-tight mb-4 drop-shadow-2xl flex items-center justify-center text-white">
+        <h1 className="text-5xl sm:text-7xl md:text-[8rem] lg:text-[10rem] font-medium tracking-tight mb-4 drop-shadow-2xl flex items-center justify-center text-white">
           <span className="font-serif">Lex<span className="italic">iq</span></span>
         </h1>
         

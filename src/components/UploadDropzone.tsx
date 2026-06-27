@@ -49,7 +49,7 @@ export function UploadDropzone({ onFileUpload }: UploadDropzoneProps) {
   return (
     <div className="flex flex-col items-center justify-center w-full p-4">
       <label 
-        className={`group relative w-full max-w-xl p-12 flex flex-col items-center justify-center rounded-2xl border cursor-pointer overflow-hidden ${
+        className={`group relative w-full max-w-xl p-6 sm:p-12 flex flex-col items-center justify-center rounded-2xl border cursor-pointer overflow-hidden ${
           isDragging 
             ? 'border-ink-accent bg-ink-surface/95 scale-[1.02] shadow-2xl shadow-ink-accent/20' 
             : 'border-ink-border/50 bg-ink-surface/70 shadow-xl backdrop-blur-md'

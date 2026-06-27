@@ -25,7 +25,7 @@ export function ReaderToolbar({
   return (
     <div
       style={{ backgroundColor: `${shell.surface}f0`, borderColor: shell.border }}
-      className="absolute top-[2px] left-0 right-0 z-50 border-b backdrop-blur-md flex items-center justify-between px-3 py-2.5 gap-4"
+      className="absolute top-[2px] left-0 right-0 z-[210] border-b backdrop-blur-md flex items-center justify-between px-2 sm:px-3 py-2 sm:py-2.5 gap-2 sm:gap-4"
     >
       {/* Left: back + title */}
       <div className="flex items-center gap-2 min-w-0">

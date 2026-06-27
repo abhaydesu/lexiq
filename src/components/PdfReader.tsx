@@ -32,6 +32,16 @@ export function PdfReader({ file, bookId, onClose, theme, onThemeChange }: PdfRe
   const [fileUrl,    setFileUrl]    = useState<string | null>(null);
   const [pageInput,  setPageInput]  = useState('');
 
+  // Responsive check
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const containerRef  = useRef<HTMLDivElement>(null);
   const numPagesRef   = useRef<number>(0);
   const pageNumberRef = useRef<number>(pageNumber);
@@ -190,7 +200,7 @@ export function PdfReader({ file, bookId, onClose, theme, onThemeChange }: PdfRe
       {/* ── PDF Content ───────────────────────────────────────── */}
       <div
         ref={containerRef}
-        style={{ backgroundColor: shell.bg, paddingTop: '54px', paddingBottom: '60px' }}
+        style={{ backgroundColor: shell.bg, paddingTop: isMobile ? '64px' : '54px', paddingBottom: '60px' }}
         className="flex-1 overflow-auto flex justify-center"
       >
         <Document

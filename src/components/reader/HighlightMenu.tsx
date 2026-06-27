@@ -48,19 +48,27 @@ export function HighlightMenu({
   useEffect(() => {
     if (menuRef.current) {
       const rect = menuRef.current.getBoundingClientRect();
-      const menuWidth = rect.width || 280;
+      const menuWidth = rect.width || 240;
       const menuHeight = rect.height || 45;
+      const isMobile = window.innerWidth < 640;
       
-      // Attempt to center the menu horizontally and position it 12px above the selection
-      let left = x - menuWidth / 2;
+      let left: number;
       let top = y - menuHeight - 12;
+      
+      if (isMobile) {
+        // On mobile, center the menu horizontally in the viewport
+        left = (window.innerWidth - menuWidth) / 2;
+      } else {
+        // On desktop, center above the selection
+        left = x - menuWidth / 2;
+      }
 
       // Keep inside screen bounds
-      if (left < 16) left = 16;
-      if (left + menuWidth > window.innerWidth - 16) {
-        left = window.innerWidth - menuWidth - 16;
+      if (left < 8) left = 8;
+      if (left + menuWidth > window.innerWidth - 8) {
+        left = window.innerWidth - menuWidth - 8;
       }
-      if (top < 16) {
+      if (top < 8) {
         // If it goes off the top screen, position it below selection instead
         top = y + 25; 
       }
@@ -79,22 +87,22 @@ export function HighlightMenu({
         backgroundColor: shell.surface,
         borderColor: shell.border,
         color: shell.text,
-        zIndex: 100,
+        zIndex: 230,
         transformOrigin: 'bottom center',
-        transition: 'transform 150ms var(--ease-out), opacity 150ms ease, top 150ms var(--ease-out), left 150ms var(--ease-out)',
+        transition: 'top 150ms var(--ease-out), left 150ms var(--ease-out)',
       }}
-      className="flex flex-col border rounded-xl shadow-2xl overflow-hidden min-w-[260px] max-w-[320px] select-none highlight-menu-pop"
+      className="flex flex-col border rounded-xl shadow-2xl overflow-hidden min-w-[220px] sm:min-w-[260px] max-w-[320px] select-none highlight-menu-pop"
     >
       {/* Menu Bar */}
-      <div className="flex items-center justify-between p-2 gap-2.5">
+      <div className="flex items-center justify-between p-2 gap-2">
         {/* Colors bubbles */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {COLORS.map(c => (
             <button
               key={c.value}
               onClick={() => setSelectedColor(c.value)}
               style={{ backgroundColor: c.value }}
-              className="w-5 h-5 rounded-full relative cursor-pointer border border-black/10 transition-transform active:scale-90 hover:scale-105"
+              className="w-6 h-6 sm:w-5 sm:h-5 rounded-full relative cursor-pointer border border-black/10 transition-transform active:scale-90"
             >
               {selectedColor === c.value && (
                 <Check
@@ -110,43 +118,43 @@ export function HighlightMenu({
         <div style={{ backgroundColor: shell.border }} className="w-px h-5 shrink-0" />
 
         {/* Action buttons */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => setShowNoteInput(prev => !prev)}
             style={{ color: showNoteInput ? shell.accent : shell.muted }}
-            className={`btn-press p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 ${showNoteInput ? 'bg-black/5 dark:bg-white/5' : ''}`}
+            className={`btn-press p-2 sm:p-1.5 rounded-lg ${showNoteInput ? 'bg-black/5 dark:bg-white/5' : ''}`}
             title="Add Note"
           >
-            <Pencil size={13} />
+            <Pencil size={14} />
           </button>
           
           {onDelete && (
             <button
               onClick={onDelete}
               style={{ color: '#ef5350' }}
-              className="btn-press p-1.5 rounded-lg hover:bg-red-500/10"
+              className="btn-press p-2 sm:p-1.5 rounded-lg"
               title="Delete Highlight"
             >
-              <Trash2 size={13} />
+              <Trash2 size={14} />
             </button>
           )}
 
           <button
             onClick={() => onSave(selectedColor, note.trim() || undefined)}
             style={{ color: shell.accent }}
-            className="btn-press p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+            className="btn-press p-2 sm:p-1.5 rounded-lg"
             title="Save Highlight"
           >
-            <Check size={14} className="font-bold" />
+            <Check size={15} className="font-bold" />
           </button>
 
           <button
             onClick={onClose}
             style={{ color: shell.muted }}
-            className="btn-press p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+            className="btn-press p-2 sm:p-1.5 rounded-lg"
             title="Cancel"
           >
-            <X size={14} />
+            <X size={15} />
           </button>
         </div>
       </div>
@@ -163,11 +171,12 @@ export function HighlightMenu({
             style={{ 
               backgroundColor: shell.bg, 
               color: shell.text, 
-              borderColor: shell.border 
+              borderColor: shell.border,
+              fontSize: '13px',
             }}
             placeholder="Write a note..."
             rows={2}
-            className="w-full text-[11px] p-2 border rounded-lg focus:outline-none focus:border-amber-500 resize-none font-sans"
+            className="w-full p-2 border rounded-lg focus:outline-none focus:border-amber-500 resize-none font-sans"
             autoFocus
           />
         </div>

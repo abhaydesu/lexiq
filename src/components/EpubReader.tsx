@@ -86,6 +86,16 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
     localStorage.setItem(`lexiq-highlights-${bookId}`, JSON.stringify(highlights));
   }, [highlights, bookId]);
 
+  // Responsive check
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Dropdowns
   const [fontOpen,  setFontOpen]  = useState(false);
   const fontRef  = useRef<HTMLDivElement>(null);
@@ -645,10 +655,16 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
       background: shell.text,
       transition: 'none',
     },
+    reader: {
+      ...ReactReaderStyle.reader,
+      left: isMobile ? '12px' : '50px',
+      right: isMobile ? '12px' : '50px',
+      top: isMobile ? '60px' : '50px',
+    },
     // Hide the built-in react-reader arrows and title; we use our own
     arrow: { display: 'none' },
     titleArea: { display: 'none' },
-  }), [shell]);
+  }), [shell, isMobile]);
 
   if (!buffer) {
     return (
@@ -688,7 +704,7 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
         </button>
         <span
           style={{ color: shell.muted }}
-          className="text-[11px] font-mono tabular-nums w-6 text-center select-none"
+          className="text-[11px] font-mono tabular-nums w-6 text-center select-none hidden sm:inline"
         >
           {fontSize}
         </span>
@@ -701,7 +717,7 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
           <Plus size={13} />
         </button>
 
-        <div style={{ backgroundColor: shell.border }} className="w-px h-4 mx-1.5 shrink-0" />
+        <div style={{ backgroundColor: shell.border }} className="w-px h-4 mx-0.5 sm:mx-1.5 shrink-0" />
 
         {/* Font family dropdown */}
         <div className="relative" ref={fontRef}>
@@ -748,7 +764,7 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
       {/* ── Reader area ──────────────────────────────────────── */}
       <div
         className="epub-reader-container flex-1 relative overflow-hidden"
-        style={{ paddingTop: '52px', paddingBottom: '36px' }}
+        style={{ paddingTop: isMobile ? '64px' : '52px', paddingBottom: '36px' }}
       >
         <ReactReader
           url={buffer}
@@ -766,19 +782,19 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
             style={{
               position: 'absolute',
               left: 0,
-              top: '52px',
+              top: isMobile ? '64px' : '52px',
               bottom: '36px',
-              width: '256px',
-              zIndex: 45,
-              backgroundColor: shell.surface,
-              borderRight: `1px solid ${shell.border}`,
+              width: 'min(256px, 100%)',
+              zIndex: 0,
+              backgroundColor: sidebarTab === 'highlights' ? shell.surface : 'transparent',
+              borderRight: sidebarTab === 'highlights' ? `1px solid ${shell.border}` : 'none',
               display: 'flex',
               flexDirection: 'column',
               pointerEvents: 'none',
             }}
           >
             {/* Tab Selector */}
-            <div className="flex border-b" style={{ borderColor: shell.border, paddingLeft: '50px', pointerEvents: 'auto' }}>
+            <div className="flex border-b" style={{ borderColor: shell.border, paddingLeft: '50px', pointerEvents: 'auto', backgroundColor: shell.surface }}>
               <button
                 onClick={() => setSidebarTab('chapters')}
                 style={{

@@ -99,7 +99,7 @@ export function Library() {
         }
       />
 
-      <main className="page-enter relative z-10 flex-1 max-w-6xl mx-auto w-full px-6 pb-20">
+      <main className="page-enter relative z-10 flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 pb-20">
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ink-text/50"></div>
@@ -116,7 +116,7 @@ export function Library() {
               <h2 className="editorial-title text-3xl font-medium drop-shadow-md">Your Library</h2>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6 md:gap-8">
               {books.map(book => (
                 <BookCard 
                   key={book.id} 
