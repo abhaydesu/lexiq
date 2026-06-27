@@ -68,6 +68,7 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
     text: string;
     x: number;
     y: number;
+    height: number;
     contents: any;
   } | null>(null);
   const [editingHighlight, setEditingHighlight] = useState<Highlight | null>(null);
@@ -185,6 +186,7 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
         text: h.text,
         x,
         y,
+        height: rect.height,
         contents,
       });
       setShowHighlightMenu(true);
@@ -488,6 +490,7 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
         text,
         x,
         y,
+        height: rect.height,
         contents,
       });
       setShowHighlightMenu(true);
@@ -924,6 +927,7 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
         <HighlightMenu
           x={selection.x}
           y={selection.y}
+          height={selection.height}
           onSave={handleSaveHighlight}
           onDelete={editingHighlight ? () => deleteHighlight(editingHighlight.id) : undefined}
           onClose={handleCancelHighlight}

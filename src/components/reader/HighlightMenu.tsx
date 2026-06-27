@@ -4,6 +4,7 @@ import { Pencil, Trash2, Check, X } from 'lucide-react';
 export interface HighlightMenuProps {
   x: number;
   y: number;
+  height?: number;
   onSave: (color: string, note?: string) => void;
   onDelete?: () => void;
   onClose: () => void;
@@ -30,6 +31,7 @@ const COLORS = [
 export function HighlightMenu({
   x,
   y,
+  height = 0,
   onSave,
   onDelete,
   onClose,
@@ -53,14 +55,17 @@ export function HighlightMenu({
       const isMobile = window.innerWidth < 640;
       
       let left: number;
-      let top = y - menuHeight - 12;
+      let top: number;
       
       if (isMobile) {
         // On mobile, center the menu horizontally in the viewport
         left = (window.innerWidth - menuWidth) / 2;
+        // Position below the selection to avoid native browser selection tooltip overlap
+        top = y + height + 16;
       } else {
         // On desktop, center above the selection
         left = x - menuWidth / 2;
+        top = y - menuHeight - 12;
       }
 
       // Keep inside screen bounds
@@ -75,7 +80,7 @@ export function HighlightMenu({
 
       setOffset({ left, top });
     }
-  }, [x, y, showNoteInput]);
+  }, [x, y, height, showNoteInput]);
 
   return (
     <div
