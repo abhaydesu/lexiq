@@ -162,3 +162,12 @@ export async function ensureCoverImage(id: string): Promise<string | undefined> 
   
   return coverImage;
 }
+
+export async function updateBookName(id: string, newName: string): Promise<void> {
+  const metadataList = await getAllBookMetadata();
+  const index = metadataList.findIndex(b => b.id === id);
+  if (index !== -1) {
+    metadataList[index].name = newName;
+    await localforage.setItem(METADATA_KEY, metadataList);
+  }
+}

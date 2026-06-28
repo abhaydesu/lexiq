@@ -3,7 +3,7 @@ import { pdfjs, Document, Page } from 'react-pdf';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-import type { ReaderTheme } from '../pages/Reader';
+import type { ReaderTheme, CustomColors } from '../lib/theme';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -15,14 +15,24 @@ interface PdfReaderProps {
   bookId: string;
   onClose: () => void;
   theme: ReaderTheme;
+  customColors: CustomColors;
   onThemeChange: (theme: ReaderTheme) => void;
+  onCustomColorsChange: (colors: CustomColors) => void;
 }
 
 import { getShell } from '../lib/theme';
 import { ReaderToolbar } from './reader/ReaderToolbar';
 import { ReaderProgress } from './reader/ReaderProgress';
 
-export function PdfReader({ file, bookId, onClose, theme, onThemeChange }: PdfReaderProps) {
+export function PdfReader({ 
+  file, 
+  bookId, 
+  onClose, 
+  theme, 
+  customColors, 
+  onThemeChange, 
+  onCustomColorsChange 
+}: PdfReaderProps) {
   const [numPages,    setNumPages]   = useState<number | null>(null);
   const [pageNumber,  setPageNumber] = useState<number>(() => {
     const saved = localStorage.getItem(`lexiq-pdf-page-${bookId}`);
@@ -169,7 +179,9 @@ export function PdfReader({ file, bookId, onClose, theme, onThemeChange }: PdfRe
       <ReaderToolbar
         title={file.name.replace(/\.pdf$/i, '')}
         theme={theme}
+        customColors={customColors}
         onThemeChange={onThemeChange}
+        onCustomColorsChange={onCustomColorsChange}
         onClose={onClose}
       >
         {/* Zoom */}

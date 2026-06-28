@@ -1,5 +1,5 @@
 import { getShell } from '../../lib/theme';
-import type { ReaderTheme } from '../../pages/Reader';
+import type { ReaderTheme } from '../../lib/theme';
 
 interface ReaderProgressProps {
   theme: ReaderTheme;

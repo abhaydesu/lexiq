@@ -5,7 +5,8 @@ import type { Book } from '../lib/storage';
 import { PdfReader } from '../components/PdfReader';
 import { EpubReader } from '../components/EpubReader';
 
-export type ReaderTheme = 'ink' | 'paper' | 'sepia';
+import type { ReaderTheme, CustomColors } from '../lib/theme';
+import { getCustomColors, saveCustomColors } from '../lib/theme';
 
 export function Reader() {
   const { id } = useParams<{ id: string }>();
@@ -21,10 +22,67 @@ export function Reader() {
     return (savedTheme as ReaderTheme) || 'ink';
   });
 
+  const [customColors, setCustomColors] = useState<CustomColors>(() => getCustomColors());
+
   const changeTheme = (newTheme: ReaderTheme) => {
     setTheme(newTheme);
     localStorage.setItem('lexiq-theme', newTheme);
   };
+
+  const handleCustomColorsChange = (colors: CustomColors) => {
+    saveCustomColors(colors);
+    setCustomColors(colors);
+  };
+
+  useEffect(() => {
+    const isMobileDevice = /Mobi|Android|iPhone/i.test(navigator.userAgent) || window.innerWidth < 640;
+    if (!isMobileDevice) return;
+
+    const enterFS = async () => {
+      try {
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) {
+          if (!document.fullscreenElement) {
+            await docEl.requestFullscreen();
+          }
+        } else if ((docEl as any).webkitRequestFullscreen) {
+          if (!(document as any).webkitFullscreenElement) {
+            await (docEl as any).webkitRequestFullscreen();
+          }
+        }
+      } catch (err) {
+        console.warn("Fullscreen request failed (requires direct user gesture):", err);
+      }
+    };
+
+    // Try immediately
+    enterFS();
+    
+    // Fallback: try on first user interaction
+    const handleFirstTouch = () => {
+      enterFS();
+      document.removeEventListener('touchstart', handleFirstTouch);
+      document.removeEventListener('click', handleFirstTouch);
+    };
+
+    document.addEventListener('touchstart', handleFirstTouch);
+    document.addEventListener('click', handleFirstTouch);
+
+    return () => {
+      document.removeEventListener('touchstart', handleFirstTouch);
+      document.removeEventListener('click', handleFirstTouch);
+      // Clean up and exit fullscreen
+      if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+        try {
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          } else if ((document as any).webkitExitFullscreen) {
+            (document as any).webkitExitFullscreen();
+          }
+        } catch (_) {}
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!id) {
@@ -78,11 +136,31 @@ export function Reader() {
   }
 
   if (book.type === 'pdf') {
-    return <PdfReader file={book.file} bookId={id!} onClose={handleClose} theme={theme} onThemeChange={changeTheme} />;
+    return (
+      <PdfReader 
+        file={book.file} 
+        bookId={id!} 
+        onClose={handleClose} 
+        theme={theme} 
+        customColors={customColors}
+        onThemeChange={changeTheme} 
+        onCustomColorsChange={handleCustomColorsChange}
+      />
+    );
   }
 
   if (book.type === 'epub') {
-    return <EpubReader file={book.file} bookId={id!} onClose={handleClose} theme={theme} onThemeChange={changeTheme} />;
+    return (
+      <EpubReader 
+        file={book.file} 
+        bookId={id!} 
+        onClose={handleClose} 
+        theme={theme} 
+        customColors={customColors}
+        onThemeChange={changeTheme} 
+        onCustomColorsChange={handleCustomColorsChange}
+      />
+    );
   }
 
   return null;

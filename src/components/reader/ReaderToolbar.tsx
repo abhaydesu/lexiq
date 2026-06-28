@@ -1,12 +1,14 @@
-import { X } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { getShell } from '../../lib/theme';
-import type { ReaderTheme } from '../../pages/Reader';
+import type { ReaderTheme, CustomColors } from '../../lib/theme';
 import { ThemeDropdown } from './ThemeDropdown';
 
 interface ReaderToolbarProps {
   title: string;
   theme: ReaderTheme;
+  customColors: CustomColors;
   onThemeChange: (theme: ReaderTheme) => void;
+  onCustomColorsChange: (colors: CustomColors) => void;
   onClose: () => void;
   children?: React.ReactNode;
   onThemeDropdownOpenChange?: (isOpen: boolean) => void;
@@ -15,7 +17,9 @@ interface ReaderToolbarProps {
 export function ReaderToolbar({ 
   title, 
   theme, 
+  customColors,
   onThemeChange, 
+  onCustomColorsChange,
   onClose, 
   children,
   onThemeDropdownOpenChange
@@ -35,7 +39,7 @@ export function ReaderToolbar({
           className="reader-ctrl-btn btn-press p-2 shrink-0"
           title="Back to library"
         >
-          <X size={18} />
+          <ArrowLeft size={18} />
         </button>
         <span
           style={{ color: shell.muted }}
@@ -48,12 +52,12 @@ export function ReaderToolbar({
       {/* Right: custom controls + theme */}
       <div className="flex items-center gap-0.5 shrink-0">
         {children}
-        
-        {children && <div style={{ backgroundColor: shell.border }} className="w-px h-4 mx-1.5 shrink-0" />}
 
         <ThemeDropdown 
           theme={theme} 
+          customColors={customColors}
           onThemeChange={onThemeChange} 
+          onCustomColorsChange={onCustomColorsChange}
           onOpenChange={onThemeDropdownOpenChange}
         />
       </div>

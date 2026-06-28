@@ -1,15 +1,19 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
-import { getAllBookMetadata, deleteBook, saveBook, ensureCoverImage } from '../lib/storage';
+import { getAllBookMetadata, deleteBook, saveBook, ensureCoverImage, updateBookName } from '../lib/storage';
 import type { BookMetadata } from '../lib/storage';
 import { UploadDropzone } from '../components/UploadDropzone';
 import { Header } from '../components/common/Header';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
+import { RenameDialog } from '../components/common/RenameDialog';
 import { BookCard } from '../components/library/BookCard';
 
 export function Library() {
   const [books, setBooks] = useState<BookMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [bookToDelete, setBookToDelete] = useState<string | null>(null);
+  const [bookToRename, setBookToRename] = useState<{ id: string; name: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -64,14 +68,40 @@ export function Library() {
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
+  const handleDelete = (e: React.MouseEvent, id: string) => {
     e.preventDefault(); // Prevent navigating to the reader
     e.stopPropagation();
-    
-    if (confirm('Are you sure you want to delete this book?')) {
-      await deleteBook(id);
+    setBookToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (bookToDelete) {
+      await deleteBook(bookToDelete);
       loadBooks();
+      setBookToDelete(null);
     }
+  };
+
+  const cancelDelete = () => {
+    setBookToDelete(null);
+  };
+
+  const handleRenameClick = (e: React.MouseEvent, id: string, name: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setBookToRename({ id, name });
+  };
+
+  const handleRenameConfirm = async (newName: string) => {
+    if (bookToRename) {
+      await updateBookName(bookToRename.id, newName);
+      loadBooks();
+      setBookToRename(null);
+    }
+  };
+
+  const handleRenameCancel = () => {
+    setBookToRename(null);
   };
 
   return (
@@ -122,12 +152,29 @@ export function Library() {
                   key={book.id} 
                   book={book} 
                   onDelete={handleDelete} 
+                  onRename={handleRenameClick}
                 />
               ))}
             </div>
           </>
         )}
       </main>
+
+      <ConfirmDialog 
+        isOpen={bookToDelete !== null}
+        title="Delete Book"
+        message="Are you sure you want to delete this book? This action cannot be undone and will remove all associated highlights and notes."
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
+
+      <RenameDialog
+        isOpen={bookToRename !== null}
+        initialValue={bookToRename?.name || ''}
+        onConfirm={handleRenameConfirm}
+        onCancel={handleRenameCancel}
+      />
     </div>
   );
 }

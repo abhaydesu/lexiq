@@ -1,17 +1,19 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { ReactReader, ReactReaderStyle } from 'react-reader';
 import { ChevronDown, ChevronLeft, ChevronRight, Minus, Plus, Type, Highlighter, BookOpen, Trash2 } from 'lucide-react';
-import type { ReaderTheme } from '../pages/Reader';
-import { v4 as uuidv4 } from 'uuid';
-import { HighlightMenu } from './reader/HighlightMenu';
-import type { Highlight } from '../lib/supabase-mock';
+import type { ReaderTheme, CustomColors } from '../lib/theme';
+import { getShell } from '../lib/theme';
+import { ReaderToolbar } from './reader/ReaderToolbar';
+import { ReaderProgress } from './reader/ReaderProgress';
 
 interface EpubReaderProps {
   file: File;
   bookId: string;
   onClose: () => void;
   theme: ReaderTheme;
+  customColors: CustomColors;
   onThemeChange: (theme: ReaderTheme) => void;
+  onCustomColorsChange: (colors: CustomColors) => void;
 }
 
 type FontFamily = 'sans' | 'serif' | 'mono';
@@ -28,11 +30,19 @@ const FONT_LABELS: Record<FontFamily, string> = {
   mono: 'Monospace',
 };
 
-import { getShell } from '../lib/theme';
-import { ReaderToolbar } from './reader/ReaderToolbar';
-import { ReaderProgress } from './reader/ReaderProgress';
+import { v4 as uuidv4 } from 'uuid';
+import { HighlightMenu } from './reader/HighlightMenu';
+import type { Highlight } from '../lib/supabase-mock';
 
-export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: EpubReaderProps) {
+export function EpubReader({ 
+  file, 
+  bookId, 
+  onClose, 
+  theme, 
+  customColors, 
+  onThemeChange, 
+  onCustomColorsChange 
+}: EpubReaderProps) {
   const [location, setLocation] = useState<string | number>(() =>
     localStorage.getItem(`lexiq-pos-${bookId}`) ?? 0,
   );
@@ -199,6 +209,9 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
     const rendition = renditionRef.current;
     if (!rendition) return;
 
+    const blendMode = theme === 'ink' ? 'screen' : 'multiply';
+    const opacity = theme === 'ink' ? '0.45' : '0.35';
+
     highlightsRef.current.forEach(h => {
       try {
         rendition.annotations.remove(h.cfi_range, 'highlight');
@@ -210,7 +223,7 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
           { id: h.id },
           (e: MouseEvent) => handleHighlightClick(e, h),
           'epubjs-hl',
-          { fill: h.color, 'fill-opacity': '0.35', style: 'mix-blend-mode: multiply; cursor: pointer;' }
+          { fill: h.color, 'fill-opacity': opacity, style: `mix-blend-mode: ${blendMode}; cursor: pointer;` }
         );
 
         if (h.note) {
@@ -225,7 +238,7 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
         console.error("Failed to apply highlight:", e);
       }
     });
-  }, [handleHighlightClick]);
+  }, [handleHighlightClick, theme]);
 
   const deleteHighlight = useCallback((id: string) => {
     const target = highlights.find(h => h.id === id);
@@ -337,9 +350,21 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
     const rendition = renditionRef.current;
     if (!rendition) return;
 
+    if (theme === 'custom') {
+      rendition.themes.register('custom', {
+        body: {
+          background: `${customColors.bg} !important`,
+          color:      `${customColors.text} !important`,
+          padding:    '0 !important',
+        },
+        'a[href]': { color: `#d97706 !important` },
+      });
+    }
+
     rendition.themes.select(theme);
 
-    const textColor = theme === 'ink' ? '#ffffff' : '#000000';
+    const textColor = theme === 'custom' ? customColors.text : theme === 'ink' ? '#e8e6e3' : '#000000';
+    const bgColor = theme === 'custom' ? customColors.bg : theme === 'ink' ? '#111215' : theme === 'paper' ? '#fcfaf2' : '#f5e6ce';
 
     // getContents() returns the currently rendered section(s) — the correct epubjs API
     const applyToContents = () => {
@@ -349,13 +374,20 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
           const doc: Document | undefined = contents?.document;
           if (!doc) return;
 
-          // 1. Update the body color inline style — beats everything else
-          if (doc.body) doc.body.style.setProperty('color', textColor, 'important');
+          // 1. Update the body/html background and color inline styles — beats everything else
+          if (doc.documentElement) {
+            doc.documentElement.style.setProperty('background-color', bgColor, 'important');
+            doc.documentElement.style.setProperty('color', textColor, 'important');
+          }
+          if (doc.body) {
+            doc.body.style.setProperty('background-color', bgColor, 'important');
+            doc.body.style.setProperty('color', textColor, 'important');
+          }
 
           // 2. Strip any book inline color styles from non-code, non-link elements
           doc.querySelectorAll('*').forEach((el: Element) => {
             const htmlEl = el as HTMLElement;
-            if (htmlEl === doc.body) return;
+            if (htmlEl === doc.body || htmlEl === doc.documentElement) return;
             if (htmlEl.closest('pre') || htmlEl.closest('code')) return;
             if (htmlEl.tagName === 'A' && htmlEl.hasAttribute('href')) return;
             if (htmlEl.style.color) htmlEl.style.removeProperty('color');
@@ -364,10 +396,12 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
       } catch (_) {}
     };
 
-    // Run immediately (for current content) and also after epubjs re-renders with new theme CSS
+    // Run immediately and also in requestAnimationFrames to defeat any late epubjs styles
     applyToContents();
     requestAnimationFrame(applyToContents);
-  }, [theme]);
+    setTimeout(applyToContents, 50);
+    setTimeout(applyToContents, 150);
+  }, [theme, customColors]);
 
 
 
@@ -399,6 +433,9 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
   // Ref so that the rendered callback can read the latest theme without stale closure
   const themeRef2 = useRef<ReaderTheme>(theme);
   useEffect(() => { themeRef2.current = theme; }, [theme]);
+
+  const customColorsRef = useRef<CustomColors>(customColors);
+  useEffect(() => { customColorsRef.current = customColors; }, [customColors]);
   
   const fontRef2 = useRef<FontFamily>(fontFamily);
   useEffect(() => { fontRef2.current = fontFamily; }, [fontFamily]);
@@ -440,10 +477,21 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
           'a[href]': { color: `${link} !important` },
         });
 
-      reg('ink',   '#111215', '#ffffff', '#d97706');
+      reg('ink',   '#111215', '#e8e6e3', '#d97706');
       reg('paper', '#fcfaf2', '#000000', '#b45309');
       reg('sepia', '#f5e6ce', '#000000', '#8b5e3c');
       registeredRef.current = true;
+    }
+
+    if (theme === 'custom') {
+      rendition.themes.register('custom', {
+        body: {
+          background: `${customColors.bg} !important`,
+          color:      `${customColors.text} !important`,
+          padding:    '0 !important',
+        },
+        'a[href]': { color: `#d97706 !important` },
+      });
     }
 
     rendition.themes.select(theme);
@@ -454,7 +502,8 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
     rendition.on('rendered', () => {
       const currentTheme = themeRef2.current;
       const currentFont = fontRef2.current;
-      const textColor = currentTheme === 'ink' ? '#ffffff' : '#000000';
+      const textColor = currentTheme === 'custom' ? customColorsRef.current.text : currentTheme === 'ink' ? '#e8e6e3' : '#000000';
+      const bgColor = currentTheme === 'custom' ? customColorsRef.current.bg : currentTheme === 'ink' ? '#111215' : currentTheme === 'paper' ? '#fcfaf2' : '#f5e6ce';
       try {
         const contentsList: any[] = rendition.getContents ? rendition.getContents() : [];
         contentsList.forEach((contents: any) => {
@@ -462,7 +511,11 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
           if (!doc) return;
           
           if (doc.body) {
+            doc.body.style.setProperty('background-color', bgColor, 'important');
             doc.body.style.setProperty('font-family', FONT_STACKS[currentFont], 'important');
+          }
+          if (doc.documentElement) {
+            doc.documentElement.style.setProperty('background-color', bgColor, 'important');
           }
           stripInlineColors(doc, textColor);
         });
@@ -548,10 +601,16 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
       // Also set body color immediately and synchronously so it takes effect before paint
       const currentTheme = themeRef2.current;
       const currentFont = fontRef2.current;
-      const bodyColor = currentTheme === 'ink' ? '#ffffff' : '#000000';
+      const bodyColor = currentTheme === 'custom' ? customColorsRef.current.text : currentTheme === 'ink' ? '#e8e6e3' : '#000000';
+      const bodyBg = currentTheme === 'custom' ? customColorsRef.current.bg : currentTheme === 'ink' ? '#111215' : currentTheme === 'paper' ? '#fcfaf2' : '#f5e6ce';
       if (doc.body) {
+        doc.body.style.setProperty('background-color', bodyBg, 'important');
         doc.body.style.setProperty('color', bodyColor, 'important');
         doc.body.style.setProperty('font-family', FONT_STACKS[currentFont], 'important');
+      }
+      if (doc.documentElement) {
+        doc.documentElement.style.setProperty('background-color', bodyBg, 'important');
+        doc.documentElement.style.setProperty('color', bodyColor, 'important');
       }
 
       // Hide selection menu when clicking inside the iframe
@@ -692,7 +751,9 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
       <ReaderToolbar
         title={file.name.replace(/\.epub$/i, '')}
         theme={theme}
+        customColors={customColors}
         onThemeChange={onThemeChange}
+        onCustomColorsChange={onCustomColorsChange}
         onClose={onClose}
         onThemeDropdownOpenChange={(isOpen) => isOpen && setFontOpen(false)}
       >
@@ -719,8 +780,6 @@ export function EpubReader({ file, bookId, onClose, theme, onThemeChange }: Epub
         >
           <Plus size={13} />
         </button>
-
-        <div style={{ backgroundColor: shell.border }} className="w-px h-4 mx-0.5 sm:mx-1.5 shrink-0" />
 
         {/* Font family dropdown */}
         <div className="relative" ref={fontRef}>

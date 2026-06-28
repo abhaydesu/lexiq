@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Pencil, Trash2, Check, X } from 'lucide-react';
+import { MessageSquare, Trash2, Check, X } from 'lucide-react';
 
 export interface HighlightMenuProps {
   x: number;
@@ -43,8 +43,6 @@ export function HighlightMenu({
   const [note, setNote] = useState(initialNote || '');
   const [showNoteInput, setShowNoteInput] = useState(!!initialNote);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  // Position offset to center menu above selection
   const [offset, setOffset] = useState({ left: x, top: y });
 
   useEffect(() => {
@@ -82,6 +80,21 @@ export function HighlightMenu({
     }
   }, [x, y, height, showNoteInput]);
 
+  const handleColorClick = (colorValue: string) => {
+    if (initialColor === colorValue) {
+      if (onDelete) {
+        onDelete();
+      } else {
+        onClose();
+      }
+    } else {
+      setSelectedColor(colorValue);
+      if (!showNoteInput) {
+        onSave(colorValue, note.trim() || undefined);
+      }
+    }
+  };
+
   return (
     <div
       ref={menuRef}
@@ -89,101 +102,119 @@ export function HighlightMenu({
         position: 'absolute',
         left: `${offset.left}px`,
         top: `${offset.top}px`,
-        backgroundColor: shell.surface,
-        borderColor: shell.border,
-        color: shell.text,
         zIndex: 230,
-        transformOrigin: 'bottom center',
         transition: 'top 150ms var(--ease-out), left 150ms var(--ease-out)',
       }}
-      className="flex flex-col border rounded-xl shadow-2xl overflow-hidden min-w-[220px] sm:min-w-[260px] max-w-[320px] select-none highlight-menu-pop"
+      className="flex flex-col items-center gap-2 select-none highlight-menu-pop"
     >
-      {/* Menu Bar */}
-      <div className="flex items-center justify-between p-2 gap-2">
-        {/* Colors bubbles */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {COLORS.map(c => (
-            <button
-              key={c.value}
-              onClick={() => setSelectedColor(c.value)}
-              style={{ backgroundColor: c.value }}
-              className="w-6 h-6 sm:w-5 sm:h-5 rounded-full relative cursor-pointer border border-black/10 transition-transform active:scale-90"
-            >
-              {selectedColor === c.value && (
-                <Check
-                  size={11}
-                  className="absolute inset-0 m-auto"
-                  style={{ color: c.text }}
-                />
-              )}
-            </button>
-          ))}
+      {/* Container for Color Pill + Action Circles */}
+      <div className="flex items-center gap-2">
+        {/* Pill 1: Color Selection */}
+        <div
+          style={{
+            backgroundColor: shell.surface,
+            borderColor: shell.border,
+            color: shell.text,
+          }}
+          className="flex items-center p-2 border rounded-full shadow-2xl shrink-0"
+        >
+          {/* Colors bubbles */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {COLORS.map(c => (
+              <button
+                key={c.value}
+                onClick={() => handleColorClick(c.value)}
+                style={{ backgroundColor: c.value }}
+                className="w-6 h-6 sm:w-5 sm:h-5 rounded-full relative cursor-pointer border border-black/10 transition-transform active:scale-90"
+              >
+                {selectedColor === c.value && (
+                  <Check
+                    size={11}
+                    className="absolute inset-0 m-auto"
+                    style={{ color: c.text }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div style={{ backgroundColor: shell.border }} className="w-px h-5 shrink-0" />
-
-        {/* Action buttons */}
-        <div className="flex items-center gap-1">
+        {/* Note Trigger Button */}
+        <button
+          onClick={() => setShowNoteInput(prev => !prev)}
+          style={{
+            backgroundColor: shell.surface,
+            borderColor: shell.border,
+            color: showNoteInput ? shell.accent : shell.muted,
+          }}
+          className={`w-9 h-9 rounded-full border shadow-2xl flex items-center justify-center cursor-pointer transition-transform active:scale-90 shrink-0 ${
+            showNoteInput ? 'bg-black/5 dark:bg-white/5' : ''
+          }`}
+          title="Add Note"
+        >
+          <MessageSquare size={14} />
+        </button>
+        
+        {/* Circle Button: Delete Highlight */}
+        {onDelete && (
           <button
-            onClick={() => setShowNoteInput(prev => !prev)}
-            style={{ color: showNoteInput ? shell.accent : shell.muted }}
-            className={`btn-press p-2 sm:p-1.5 rounded-lg ${showNoteInput ? 'bg-black/5 dark:bg-white/5' : ''}`}
-            title="Add Note"
+            onClick={onDelete}
+            style={{
+              backgroundColor: shell.surface,
+              borderColor: shell.border,
+              color: '#ef5350',
+            }}
+            className="w-9 h-9 rounded-full border shadow-2xl flex items-center justify-center cursor-pointer transition-transform active:scale-90 shrink-0"
+            title="Delete Highlight"
           >
-            <Pencil size={14} />
+            <Trash2 size={14} />
           </button>
-          
-          {onDelete && (
-            <button
-              onClick={onDelete}
-              style={{ color: '#ef5350' }}
-              className="btn-press p-2 sm:p-1.5 rounded-lg"
-              title="Delete Highlight"
-            >
-              <Trash2 size={14} />
-            </button>
-          )}
-
-          <button
-            onClick={() => onSave(selectedColor, note.trim() || undefined)}
-            style={{ color: shell.accent }}
-            className="btn-press p-2 sm:p-1.5 rounded-lg"
-            title="Save Highlight"
-          >
-            <Check size={15} className="font-bold" />
-          </button>
-
-          <button
-            onClick={onClose}
-            style={{ color: shell.muted }}
-            className="btn-press p-2 sm:p-1.5 rounded-lg"
-            title="Cancel"
-          >
-            <X size={15} />
-          </button>
-        </div>
+        )}
       </div>
 
-      {/* Note input slide down */}
+      {/* Note Input Box floating directly below the button row */}
       {showNoteInput && (
         <div 
-          style={{ borderColor: shell.border }}
-          className="border-t p-2 flex flex-col gap-1.5 bg-black/2 dark:bg-white/2"
+          style={{ 
+            backgroundColor: shell.bg, 
+            borderColor: shell.border,
+            color: shell.text,
+          }}
+          className="p-2.5 border rounded-2xl shadow-2xl min-w-[210px] sm:min-w-[240px] max-w-[280px] animate-in fade-in slide-in-from-top-2 duration-150"
         >
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            style={{ 
-              backgroundColor: shell.bg, 
-              color: shell.text, 
-              borderColor: shell.border,
-              fontSize: '13px',
-            }}
-            placeholder="Write a note..."
-            rows={2}
-            className="w-full p-2 border rounded-lg focus:outline-none focus:border-amber-500 resize-none font-sans"
-            autoFocus
-          />
+          <div className="relative">
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              style={{ 
+                backgroundColor: 'transparent', 
+                color: shell.text, 
+                fontSize: '13px',
+              }}
+              placeholder="Write a note..."
+              rows={2}
+              className="w-full p-1 pb-10 border-none focus:outline-none resize-none font-sans"
+              autoFocus
+            />
+            <div className="absolute bottom-1 right-1 flex items-center gap-1.5">
+              <button
+                onClick={() => setShowNoteInput(false)}
+                style={{ borderColor: shell.border }}
+                className="w-6 h-6 rounded-full border flex items-center justify-center text-ink-text-muted hover:text-ink-text transition-colors cursor-pointer bg-ink-surface/50"
+                title="Cancel"
+              >
+                <X size={11} className="opacity-70" />
+              </button>
+              <button
+                onClick={() => onSave(selectedColor, note.trim() || undefined)}
+                style={{ backgroundColor: shell.accent, color: '#fff' }}
+                className="w-6 h-6 rounded-full flex items-center justify-center transition-colors cursor-pointer hover:opacity-90 shadow-sm"
+                title="Save"
+              >
+                <Check size={11} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

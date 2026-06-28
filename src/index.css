@@ -240,7 +240,7 @@ body {
 @media (max-width: 640px) {
   .reader-nav-btn {
     width: 36px;
-    top: 60px;
+    top: 120px;
   }
 }
 

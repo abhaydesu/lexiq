@@ -1,13 +1,14 @@
 import { Link } from 'react-router-dom';
-import { BookOpen, FileText, Trash2 } from 'lucide-react';
+import { BookOpen, FileText, Trash2, Pencil } from 'lucide-react';
 import type { BookMetadata } from '../../lib/storage';
 
 interface BookCardProps {
   book: BookMetadata;
   onDelete: (e: React.MouseEvent, id: string) => void;
+  onRename: (e: React.MouseEvent, id: string, name: string) => void;
 }
 
-export function BookCard({ book, onDelete }: BookCardProps) {
+export function BookCard({ book, onDelete, onRename }: BookCardProps) {
   const cleanName = book.name.replace(/_/g, ' ');
 
   return (
@@ -18,11 +19,21 @@ export function BookCard({ book, onDelete }: BookCardProps) {
       {/* Delete Button — fast exit, no :hover on touch */}
       <button 
         onClick={(e) => onDelete(e, book.id)}
-        className="book-delete btn-press absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white/70 opacity-0 z-20 backdrop-blur-sm"
+        className="book-delete btn-press absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white/70 opacity-0 z-20 backdrop-blur-sm hover:text-white"
         style={{transition: 'opacity 150ms ease, color 150ms ease, background-color 150ms ease, transform 160ms var(--ease-out)'}}
         title="Delete Book"
       >
         <Trash2 size={14} />
+      </button>
+
+      {/* Rename Button */}
+      <button 
+        onClick={(e) => onRename(e, book.id, book.name)}
+        className="book-delete btn-press absolute top-2 right-9 p-1.5 rounded-full bg-black/60 text-white/70 opacity-0 z-20 backdrop-blur-sm hover:text-white"
+        style={{transition: 'opacity 150ms ease, color 150ms ease, background-color 150ms ease, transform 160ms var(--ease-out)'}}
+        title="Rename Book"
+      >
+        <Pencil size={14} />
       </button>
 
       {/* Book Cover / Spine */}
