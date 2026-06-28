@@ -2,6 +2,7 @@ import { ArrowUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../components/ThemeProvider';
 import { Header } from '../components/common/Header';
+import { LQIP } from '../lib/lqip';
 
 export function Home() {
   const { theme } = useTheme();
@@ -13,7 +14,7 @@ export function Home() {
       <div 
         className="absolute top-0 left-0 w-full h-[120vh] z-0 transition-opacity duration-700 ease-in-out bg-no-repeat"
         style={{
-          backgroundImage: "url('/dark-home-dither.png')",
+          backgroundImage: `url('/dark-home-dither.png'), url('${LQIP.darkHome}')`,
           backgroundPosition: 'top center',
           backgroundSize: 'cover',
           opacity: theme === 'dark' ? 1 : 0
@@ -23,7 +24,7 @@ export function Home() {
       <div 
         className="absolute top-0 left-0 w-full h-[120vh] z-0 transition-opacity duration-700 ease-in-out bg-no-repeat"
         style={{
-          backgroundImage: "url('/light-home-dither.png')",
+          backgroundImage: `url('/light-home-dither.png'), url('${LQIP.lightHome}')`,
           backgroundPosition: 'top center',
           backgroundSize: 'cover',
           opacity: theme === 'dark' ? 0 : 1
@@ -146,7 +147,7 @@ export function Home() {
               <div 
                 className="absolute inset-0 transition-opacity duration-700 ease-in-out"
                 style={{
-                  backgroundImage: "url('/art-1-dark.png')",
+                  backgroundImage: `url('/art-1-dark.png'), url('${LQIP.artDark}')`,
                   backgroundSize: 'contain',
                   backgroundPosition: 'center',
                   backgroundRepeat: 'no-repeat',
@@ -156,7 +157,7 @@ export function Home() {
               <div 
                 className="absolute inset-0 transition-opacity duration-700 ease-in-out"
                 style={{
-                  backgroundImage: "url('/art-1.png')",
+                  backgroundImage: `url('/art-1.png'), url('${LQIP.artLight}')`,
                   backgroundSize: 'contain',
                   backgroundPosition: 'center',
                   backgroundRepeat: 'no-repeat',
@@ -200,7 +201,7 @@ export function Home() {
             </div>
 
             {/* Diagram/Visual for Highlights */}
-            <div className="aspect-[4/3] rounded-2xl bg-ink-surface border border-ink-border/50 overflow-hidden relative flex flex-col items-center justify-center p-8 group">
+            <div className="aspect-[4/3] rounded-2xl bg-ink-surface border border-ink-border/50 overflow-hidden relative flex flex-col items-center justify-center p-4 sm:p-8 group">
               {/* Grid Background */}
               <div 
                 className="absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity duration-700" 
@@ -210,28 +211,28 @@ export function Home() {
                 }} 
               />
               
-              <div className="relative w-full max-w-md z-10 transition-transform duration-700 ease-out group-hover:scale-105">
+              <div className="relative w-full max-w-md z-10 transition-transform duration-700 ease-out group-hover:scale-[1.02] sm:group-hover:scale-105">
                  {/* Text paragraph */}
-                 <div className="text-ink-text-muted/70 font-serif text-sm md:text-base leading-loose mb-2">
+                 <div className="text-ink-text-muted/70 font-serif text-[12px] leading-relaxed sm:text-sm md:text-base sm:leading-loose mb-2">
                    The difference between the almost right word and the right word is really a large matter. 
                    <span className="relative inline-block mx-1">
                      <span className="relative z-10 text-ink-text mix-blend-difference selection:bg-transparent">
                        'Tis the difference between the lightning bug and the lightning.
                      </span>
-                     <span className="absolute inset-0 bg-[#FFD700] mix-blend-multiply opacity-50 dark:opacity-80 rounded-[2px] -mx-1 px-1"></span>
+                     <span className="absolute inset-0 bg-[#FFD700] mix-blend-multiply opacity-50 dark:opacity-80 rounded-[2px] -mx-0.5 sm:-mx-1 px-0.5 sm:px-1"></span>
                    </span>
                  </div>
                  
                  {/* Note popup */}
-                 <div className="ml-12 mt-6 bg-ink-bg border border-ink-border rounded-xl p-4 shadow-lg flex gap-3.5 items-start relative before:absolute before:top-[-9px] before:left-5 before:w-4 before:h-4 before:bg-ink-bg before:border-l before:border-t before:border-ink-border before:rotate-45 transition-transform duration-500 hover:-translate-y-1">
-                   <div className="w-7 h-7 rounded-full bg-ink-surface flex items-center justify-center border border-ink-border/50 shrink-0 mt-0.5">
-                     <svg className="w-3.5 h-3.5 text-ink-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <div className="ml-4 sm:ml-12 mt-4 sm:mt-6 bg-ink-bg border border-ink-border rounded-lg sm:rounded-xl p-2.5 sm:p-4 shadow-lg flex gap-2.5 sm:gap-3.5 items-start relative before:absolute before:top-[-7px] sm:before:top-[-9px] before:left-4 sm:before:left-5 before:w-3 sm:before:w-4 before:h-3 sm:before:h-4 before:bg-ink-bg before:border-l before:border-t before:border-ink-border before:rotate-45 transition-transform duration-500 hover:-translate-y-1">
+                   <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-full bg-ink-surface flex items-center justify-center border border-ink-border/50 shrink-0 mt-0.5 sm:mt-0">
+                     <svg className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-ink-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                      </svg>
                    </div>
                    <div>
-                     <div className="text-sm font-medium text-ink-text mb-1">Mark Twain</div>
-                     <div className="text-xs text-ink-text-muted leading-relaxed">
+                     <div className="text-[11px] sm:text-sm font-medium text-ink-text mb-0.5 sm:mb-1">Mark Twain</div>
+                     <div className="text-[10px] sm:text-xs text-ink-text-muted leading-relaxed">
                        This is perfectly stated. Precision in language is everything when crafting a narrative.
                      </div>
                    </div>
