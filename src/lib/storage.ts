@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import ePub from 'epubjs';
 import * as pdfjsLib from 'pdfjs-dist';
 
+export type BookStatus = 'want-to-read' | 'reading' | 'finished' | 'abandoned';
+
 export interface BookMetadata {
   id: string;
   name: string;
@@ -10,6 +12,9 @@ export interface BookMetadata {
   size: number;
   addedAt: number;
   coverImage?: string; // Base64 data URL
+  status?: BookStatus; // Made optional for backward compatibility
+  progress?: number; // 0 to 100
+  lastRead?: number; // Timestamp of last read/interaction
 }
 
 export interface Book extends BookMetadata {
@@ -17,6 +22,8 @@ export interface Book extends BookMetadata {
 }
 
 const METADATA_KEY = 'lexiq_library_metadata';
+const ACTIVITY_KEY = 'lexiq_reading_activity';
+const GOAL_KEY = 'lexiq_reading_goal';
 
 async function extractEpubCover(file: File): Promise<string | undefined> {
   try {
@@ -94,6 +101,8 @@ export async function saveBook(file: File): Promise<BookMetadata> {
     size: file.size,
     addedAt: Date.now(),
     coverImage,
+    status: 'want-to-read',
+    progress: 0,
   };
 
   // Save the file blob individually to prevent large array serialization issues
@@ -170,4 +179,61 @@ export async function updateBookName(id: string, newName: string): Promise<void>
     metadataList[index].name = newName;
     await localforage.setItem(METADATA_KEY, metadataList);
   }
+}
+
+export async function updateBookProgress(id: string, progress: number, status?: BookStatus): Promise<void> {
+  const metadataList = await getAllBookMetadata();
+  const index = metadataList.findIndex(b => b.id === id);
+  if (index !== -1) {
+    metadataList[index].progress = Math.max(0, Math.min(100, Math.round(progress)));
+    if (status) {
+      metadataList[index].status = status;
+    }
+    // Automatically move to finished if progress is >= 100% and not already finished
+    if (metadataList[index].progress >= 100 && metadataList[index].status !== 'finished') {
+      metadataList[index].status = 'finished';
+    } else if (metadataList[index].progress > 0 && metadataList[index].progress < 100 && (!metadataList[index].status || metadataList[index].status === 'want-to-read')) {
+      metadataList[index].status = 'reading';
+    }
+    await localforage.setItem(METADATA_KEY, metadataList);
+  }
+}
+
+export async function updateBookStatus(id: string, status: BookStatus): Promise<void> {
+  const metadataList = await getAllBookMetadata();
+  const index = metadataList.findIndex(b => b.id === id);
+  if (index !== -1) {
+    metadataList[index].status = status;
+    metadataList[index].lastRead = Date.now();
+    await localforage.setItem(METADATA_KEY, metadataList);
+  }
+}
+
+export async function getReadingActivity(): Promise<Record<string, number>> {
+  const activity = await localforage.getItem<Record<string, number>>(ACTIVITY_KEY);
+  return activity || {};
+}
+
+export async function logReadingActivity(durationMinutes: number): Promise<void> {
+  if (durationMinutes <= 0) return;
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const activity = await getReadingActivity();
+  
+  if (activity[dateStr]) {
+    activity[dateStr] += durationMinutes;
+  } else {
+    activity[dateStr] = durationMinutes;
+  }
+  
+  await localforage.setItem(ACTIVITY_KEY, activity);
+}
+
+export async function getReadingGoal(): Promise<number | null> {
+  const goal = await localforage.getItem<number>(GOAL_KEY);
+  return goal;
+}
+
+export async function setReadingGoal(goal: number): Promise<void> {
+  await localforage.setItem(GOAL_KEY, goal);
 }

@@ -3,6 +3,7 @@ import { ReactReader, ReactReaderStyle } from 'react-reader';
 import { ChevronDown, ChevronLeft, ChevronRight, Minus, Plus, Type, Highlighter, BookOpen, Trash2 } from 'lucide-react';
 import type { ReaderTheme, CustomColors } from '../lib/theme';
 import { getShell } from '../lib/theme';
+import { updateBookProgress, logReadingActivity } from '../lib/storage';
 import { ReaderToolbar } from './reader/ReaderToolbar';
 import { ReaderProgress } from './reader/ReaderProgress';
 
@@ -679,6 +680,46 @@ export function EpubReader({
   const shell    = getShell(theme);
   const displayPage = totalLocs > 0 ? Math.max(1, Math.min(currentLoc + 1, totalLocs)) : 0;
   const progress = totalLocs > 0 ? Math.min((displayPage / totalLocs) * 100, 100) : 0;
+
+  // Track progress
+  useEffect(() => {
+    if (totalLocs > 0) {
+      updateBookProgress(bookId, progress);
+    }
+  }, [bookId, progress, totalLocs]);
+
+  // Track reading session time
+  useEffect(() => {
+    let lastLogTime = Date.now();
+    
+    const logTime = () => {
+      if (document.hidden) return; // Don't log if tab is backgrounded
+      const now = Date.now();
+      const elapsedMinutes = (now - lastLogTime) / 60000;
+      if (elapsedMinutes >= 1) {
+        logReadingActivity(elapsedMinutes);
+        lastLogTime = now;
+      }
+    };
+    
+    const interval = setInterval(logTime, 60000);
+    
+    const handleUnload = () => {
+      const now = Date.now();
+      const elapsedMinutes = (now - lastLogTime) / 60000;
+      if (elapsedMinutes > 0.1 && !document.hidden) {
+        logReadingActivity(elapsedMinutes);
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleUnload);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', handleUnload);
+      handleUnload();
+    };
+  }, [bookId]);
 
   const readerStyles = useMemo(() => ({
     ...ReactReaderStyle,

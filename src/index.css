@@ -57,6 +57,10 @@
   --theme-text-muted: #8c929e;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   @apply bg-ink-bg text-ink-text font-sans min-h-screen antialiased selection:bg-ink-accent/30 selection:text-white;
   transition: background-color 300ms var(--ease-out), color 300ms var(--ease-out);
