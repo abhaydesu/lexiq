@@ -36,7 +36,7 @@ export function ReadingLists({ books, onDelete, onRename, onStatusChange }: Read
         <h2 className="editorial-title text-3xl font-medium drop-shadow-md mb-8">{listTitles[activeList]}</h2>
         
         {listBooks.length === 0 ? (
-          <div className="text-ink-text-muted text-center py-16 bg-ink-surface/30 rounded-3xl border border-ink-border/30">
+          <div className="text-ink-text-muted text-center py-16 bg-ink-surface/80 backdrop-blur-xl rounded-3xl border border-ink-border/30">
             No books in this list.
           </div>
         ) : (

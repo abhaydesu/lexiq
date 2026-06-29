@@ -77,7 +77,7 @@ export function TrackingOverview({ books, activity }: TrackingOverviewProps) {
           
           {/* Continue Reading Widget */}
           {activeBook && (
-            <div className="w-full bg-ink-surface/30 border border-ink-border/50 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row gap-8 items-center md:items-stretch shadow-sm relative overflow-hidden group">
+            <div className="w-full bg-ink-surface/80 backdrop-blur-xl border border-ink-border/50 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row gap-8 items-center md:items-stretch shadow-sm relative overflow-hidden group">
               <div className="absolute -right-20 -top-20 w-64 h-64 bg-ink-accent/5 rounded-full blur-3xl pointer-events-none group-hover:bg-ink-accent/10 transition-colors duration-700" />
               
               <div className="w-32 md:w-40 shrink-0 shadow-lg rounded-md overflow-hidden relative group-hover:-translate-y-1 transition-transform duration-300">
@@ -122,7 +122,7 @@ export function TrackingOverview({ books, activity }: TrackingOverviewProps) {
           )}
           
           {/* Reading Goal Card */}
-          <div className="w-full bg-ink-surface/50 border border-ink-border/50 rounded-3xl p-5 md:p-6 shadow-sm flex flex-col relative overflow-hidden group">
+          <div className="w-full bg-ink-surface/80 backdrop-blur-xl border border-ink-border/50 rounded-3xl p-5 md:p-6 shadow-sm flex flex-col relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-ink-accent/5 rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-700 ease-out" />
             
             <div className="flex items-center justify-between mb-3">
@@ -211,7 +211,7 @@ export function TrackingOverview({ books, activity }: TrackingOverviewProps) {
         {/* Right Column (Sidebar) */}
         <div className="lg:col-span-4 flex flex-col gap-6 w-full">
           {/* Streaks & Activity Card */}
-          <div className="w-full bg-ink-surface/50 border border-ink-border/50 rounded-3xl p-6 shadow-sm flex flex-col h-full min-h-[380px]">
+          <div className="w-full bg-ink-surface/80 backdrop-blur-xl border border-ink-border/50 rounded-3xl p-6 shadow-sm flex flex-col h-full min-h-[380px]">
             <ReadingCalendar activity={activity} />
           </div>
         </div>

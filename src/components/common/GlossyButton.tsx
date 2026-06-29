@@ -27,7 +27,7 @@ export function GlossyButton({
   const buttonStyle = {
     background: `linear-gradient(to bottom, ${fromColor}, ${viaColor}, ${toColor})`,
     borderColor: borderColor,
-    boxShadow: `0 4px 12px ${shadowColor}`,
+    boxShadow: `0 1px 1px ${shadowColor}`,
   };
 
   const classes = `

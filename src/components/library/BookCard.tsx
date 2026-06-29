@@ -65,7 +65,7 @@ export function BookCard({ book, onDelete, onRename, onStatusChange }: BookCardP
 
       {/* Book Cover / Spine */}
       <div 
-        className="book-cover aspect-[3/4] w-full rounded-xl bg-ink-surface/70 border border-ink-border/50 flex flex-col justify-between relative overflow-hidden shadow-lg"
+        className="book-cover aspect-[3/4] w-full rounded-xl bg-ink-surface/80 backdrop-blur-xl border border-ink-border/50 flex flex-col justify-between relative overflow-hidden shadow-lg"
         style={{transition: 'border-color 200ms ease, box-shadow 200ms ease'}}
       >
         {/* Floating Status Badge */}

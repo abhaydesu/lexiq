@@ -14,7 +14,7 @@ export function ListCard({ title, books, onClick }: ListCardProps) {
   return (
     <button 
       onClick={onClick}
-      className="btn-press flex items-center gap-5 p-4 rounded-3xl bg-ink-surface/40 hover:bg-ink-surface/80 border border-ink-border/30 hover:border-ink-border/60 transition-all group w-full text-left"
+      className="btn-press flex items-center gap-5 p-4 rounded-3xl bg-ink-surface/80 hover:bg-ink-surface/95 backdrop-blur-xl border border-ink-border/30 hover:border-ink-border/60 transition-all group w-full text-left"
     >
       {/* 2x2 Thumbnail Grid */}
       <div className="w-24 h-24 shrink-0 bg-ink-surface/50 rounded-2xl overflow-hidden shadow-inner p-1.5 grid grid-cols-2 grid-rows-2 gap-1.5 relative border border-ink-border/50">

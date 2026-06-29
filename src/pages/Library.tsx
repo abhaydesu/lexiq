@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, ChevronDown, Menu, X, Sun, Moon } from 'lucide-react';
 import { getAllBookMetadata, deleteBook, saveBook, ensureCoverImage, updateBookName, updateBookStatus, getReadingActivity } from '../lib/storage';
 import type { BookMetadata, BookStatus } from '../lib/storage';
+import { useTheme } from '../components/ThemeProvider';
 import { UploadDropzone } from '../components/UploadDropzone';
 import { Header } from '../components/common/Header';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
@@ -13,6 +14,9 @@ import { ReadingLists } from '../components/library/ReadingLists';
 
 export function Library() {
   const [activeTab, setActiveTab] = useState<'overview' | 'lists' | 'all'>('overview');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isNavExpanded, setIsNavExpanded] = useState(false);
+  const { theme, toggleTheme } = useTheme();
   const [books, setBooks] = useState<BookMetadata[]>([]);
   const [activity, setActivity] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -144,56 +148,131 @@ export function Library() {
         <div className="absolute top-0 left-0 w-full h-[60vh] bg-ink-bg/30" />
       </div>
 
-      <Header 
-        isFixed={false}
-        splitMode={false}
-        maxWidthClass="max-w-4xl"
-        centerContent={
-          <div className="hidden md:flex items-center gap-6 px-4">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`text-sm font-medium tracking-wide transition-colors ${
-                activeTab === 'overview' ? 'text-ink-accent' : 'text-ink-text hover:text-ink-text-muted'
-              }`}
-            >
-              Overview
-            </button>
-            <button
-              onClick={() => setActiveTab('lists')}
-              className={`text-sm font-medium tracking-wide transition-colors ${
-                activeTab === 'lists' ? 'text-ink-accent' : 'text-ink-text hover:text-ink-text-muted'
-              }`}
-            >
-              Lists
-            </button>
-            <button
-              onClick={() => setActiveTab('all')}
-              className={`text-sm font-medium tracking-wide transition-colors ${
-                activeTab === 'all' ? 'text-ink-accent' : 'text-ink-text hover:text-ink-text-muted'
-              }`}
-            >
-              Ebooks
-            </button>
-          </div>
-        }
-        rightContent={
-          <>
+      <div className="hidden md:block">
+        <Header 
+          isFixed={false}
+          splitMode={false}
+          maxWidthClass="max-w-4xl"
+          centerContent={
+            <div className="flex items-center gap-6 px-4">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`text-sm font-medium tracking-wide transition-colors ${
+                  activeTab === 'overview' ? 'text-ink-accent' : 'text-ink-text hover:text-ink-text-muted'
+                }`}
+              >
+                Overview
+              </button>
+              <button
+                onClick={() => setActiveTab('lists')}
+                className={`text-sm font-medium tracking-wide transition-colors ${
+                  activeTab === 'lists' ? 'text-ink-accent' : 'text-ink-text hover:text-ink-text-muted'
+                }`}
+              >
+                Lists
+              </button>
+              <button
+                onClick={() => setActiveTab('all')}
+                className={`text-sm font-medium tracking-wide transition-colors ${
+                  activeTab === 'all' ? 'text-ink-accent' : 'text-ink-text hover:text-ink-text-muted'
+                }`}
+              >
+                Ebooks
+              </button>
+            </div>
+          }
+          rightContent={
             <button
               onClick={handleButtonClick}
-              className="btn-pill px-5 py-2 bg-ink-text text-ink-bg flex items-center gap-2 shadow-sm"
+              className="btn-pill px-5 py-2 bg-ink-text text-ink-bg flex items-center gap-2 shadow-sm rounded-full"
             >
               <Plus size={14} />
               Add book
             </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept=".pdf,.epub"
-              className="hidden"
-            />
-          </>
-        }
+          }
+        />
+      </div>
+
+      {/* Floating Hamburger Nav (Mobile Only) */}
+      <div className="md:hidden fixed bottom-6 right-4 z-[100] flex items-center gap-3">
+        {/* Expanded Pills */}
+        <div className={`flex items-center gap-3 transition-all duration-300 ease-out origin-right ${isNavExpanded ? 'opacity-100 translate-x-0 scale-100' : 'opacity-0 translate-x-8 scale-95 pointer-events-none'}`}>
+          
+          {/* Dropdown Pill */}
+          <div className="relative">
+            <button 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-ink-surface/80 backdrop-blur-xl rounded-full border border-ink-border/50 text-sm font-medium tracking-wide text-ink-text shadow-lg hover:bg-ink-surface transition-colors"
+            >
+              {activeTab === 'overview' ? 'Overview' : activeTab === 'lists' ? 'Lists' : 'Ebooks'}
+              <ChevronDown size={14} className={`transition-transform duration-200 ${mobileMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {mobileMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setMobileMenuOpen(false)} />
+                <div className="absolute bottom-full mb-3 right-0 w-44 bg-ink-surface/95 backdrop-blur-xl border border-ink-border/60 rounded-2xl shadow-xl py-1 z-50 flex flex-col overflow-hidden animate-fade-in">
+                  <button
+                    onClick={() => { setActiveTab('overview'); setMobileMenuOpen(false); }}
+                    className={`text-left px-5 py-3 text-sm transition-colors ${activeTab === 'overview' ? 'text-ink-accent bg-ink-accent/10 font-medium' : 'text-ink-text hover:bg-ink-bg/80'}`}
+                  >
+                    Overview
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('lists'); setMobileMenuOpen(false); }}
+                    className={`text-left px-5 py-3 text-sm transition-colors ${activeTab === 'lists' ? 'text-ink-accent bg-ink-accent/10 font-medium' : 'text-ink-text hover:bg-ink-bg/80'}`}
+                  >
+                    Lists
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('all'); setMobileMenuOpen(false); }}
+                    className={`text-left px-5 py-3 text-sm transition-colors ${activeTab === 'all' ? 'text-ink-accent bg-ink-accent/10 font-medium' : 'text-ink-text hover:bg-ink-bg/80'}`}
+                  >
+                    Ebooks
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Theme Toggle Pill */}
+          <button 
+            onClick={toggleTheme}
+            className="p-2.5 bg-ink-surface/80 backdrop-blur-xl rounded-full border border-ink-border/50 text-ink-text shadow-lg hover:bg-ink-surface transition-colors"
+            title="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
+          {/* Add Book Pill */}
+          <button
+            onClick={handleButtonClick}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-ink-text text-ink-bg rounded-full shadow-lg hover:opacity-90 transition-opacity font-medium text-sm"
+          >
+            <Plus size={16} />
+            <span className="hidden sm:inline">Add book</span>
+          </button>
+          
+        </div>
+
+        {/* Hamburger Toggle Pill */}
+        <button
+          onClick={() => {
+            setIsNavExpanded(!isNavExpanded);
+            if (isNavExpanded) setMobileMenuOpen(false); // Close dropdown if open when collapsing nav
+          }}
+          className="p-2.5 bg-ink-surface/80 backdrop-blur-xl rounded-full border border-ink-border/50 text-ink-text shadow-lg hover:bg-ink-surface transition-colors z-[110]"
+        >
+          {isNavExpanded ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".pdf,.epub"
+        className="hidden"
       />
 
       <section className="relative z-10 flex flex-col items-center justify-center pt-8 pb-16 px-6 text-center">
