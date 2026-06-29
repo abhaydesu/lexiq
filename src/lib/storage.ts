@@ -85,6 +85,51 @@ async function extractPdfCover(file: File): Promise<string | undefined> {
   return undefined;
 }
 
+function toStoredBlob(file: File): Blob {
+  return file.slice(0, file.size, file.type || 'application/octet-stream');
+}
+
+function toBookFile(value: unknown, metadata: BookMetadata): File | null {
+  if (value instanceof File) {
+    return value;
+  }
+
+  if (value instanceof Blob) {
+    const mimeType = value.type || (metadata.type === 'epub' ? 'application/epub+zip' : 'application/pdf');
+    return new File([value], metadata.name, {
+      type: mimeType,
+      lastModified: metadata.addedAt,
+    });
+  }
+
+  if (
+    value &&
+    typeof value === 'object' &&
+    'size' in value &&
+    'type' in value &&
+    typeof (value as { size?: unknown }).size === 'number'
+  ) {
+    const maybeBlob = value as Blob;
+    const mimeType = maybeBlob.type || (metadata.type === 'epub' ? 'application/epub+zip' : 'application/pdf');
+    return new File([maybeBlob], metadata.name, {
+      type: mimeType,
+      lastModified: metadata.addedAt,
+    });
+  }
+
+  if (value instanceof ArrayBuffer || (value && (value as any).buffer instanceof ArrayBuffer)) {
+    const mimeType = metadata.type === 'epub' ? 'application/epub+zip' : 'application/pdf';
+    return new File([value as BlobPart], metadata.name, {
+      type: mimeType,
+      lastModified: metadata.addedAt,
+    });
+  }
+
+  console.warn('Failed to parse stored book file:', value);
+
+  return null;
+}
+
 export async function saveBook(file: File): Promise<BookMetadata> {
   let type: 'pdf' | 'epub' = 'pdf';
   if (file.type === 'application/epub+zip' || file.name.toLowerCase().endsWith('.epub')) {
@@ -105,8 +150,8 @@ export async function saveBook(file: File): Promise<BookMetadata> {
     progress: 0,
   };
 
-  // Save the file blob individually to prevent large array serialization issues
-  await localforage.setItem(`lexiq_file_${id}`, file);
+  // Persist a Blob instead of a File for better browser compatibility.
+  await localforage.setItem(`lexiq_file_${id}`, toStoredBlob(file));
 
   // Update metadata list
   const allMetadata = await getAllBookMetadata();
@@ -128,10 +173,16 @@ export async function getBookById(id: string): Promise<Book | null> {
   
   if (!metadata) return null;
 
-  const file = await localforage.getItem<File>(`lexiq_file_${id}`);
+  const storedFile = await localforage.getItem<unknown>(`lexiq_file_${id}`);
+  
+  if (storedFile === null) {
+    console.error('Book file not found in storage for id:', id);
+    return null;
+  }
+  
+  const file = toBookFile(storedFile, metadata);
   if (!file) {
-    // Cleanup orphaned metadata if file is missing
-    await deleteBook(id);
+    console.error('Could not reconstruct file from storage for id:', id, 'storedFile:', storedFile);
     return null;
   }
 
@@ -157,7 +208,8 @@ export async function ensureCoverImage(id: string): Promise<string | undefined> 
     return metadataList[metadataIndex].coverImage;
   }
   
-  const file = await localforage.getItem<File>(`lexiq_file_${id}`);
+  const storedFile = await localforage.getItem<unknown>(`lexiq_file_${id}`);
+  const file = toBookFile(storedFile, metadataList[metadataIndex]);
   if (!file) return undefined;
   
   const coverImage = metadataList[metadataIndex].type === 'epub' 

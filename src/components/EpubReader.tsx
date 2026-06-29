@@ -47,7 +47,7 @@ export function EpubReader({
   const [location, setLocation] = useState<string | number>(() =>
     localStorage.getItem(`lexiq-pos-${bookId}`) ?? 0,
   );
-  const [buffer, setBuffer] = useState<ArrayBuffer | null>(null);
+  const [bookData, setBookData] = useState<string | ArrayBuffer | null>(null);
   const renditionRef   = useRef<any>(null);
   const registeredRef  = useRef(false);
 
@@ -112,8 +112,15 @@ export function EpubReader({
   const [fontOpen,  setFontOpen]  = useState(false);
   const fontRef  = useRef<HTMLDivElement>(null);
 
-  // Load EPUB buffer
-  useEffect(() => { file.arrayBuffer().then(setBuffer); }, [file]);
+  // Load EPUB via ArrayBuffer so epub.js can correctly parse it as a zip file.
+  // Blob URLs without .epub extensions often fail to parse properly in epub.js.
+  useEffect(() => {
+    let isMounted = true;
+    file.arrayBuffer().then((buffer) => {
+      if (isMounted) setBookData(buffer);
+    });
+    return () => { isMounted = false; };
+  }, [file]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -769,7 +776,7 @@ export function EpubReader({
     titleArea: { display: 'none' },
   }), [shell, isMobile]);
 
-  if (!buffer) {
+  if (!bookData) {
     return (
       <div style={{ backgroundColor: shell.bg }} className="flex items-center justify-center h-screen">
         <div
@@ -869,15 +876,17 @@ export function EpubReader({
         className="epub-reader-container flex-1 relative overflow-hidden"
         style={{ paddingTop: isMobile ? '64px' : '52px', paddingBottom: '36px' }}
       >
-        <ReactReader
-          url={buffer}
+        {bookData && (
+          <ReactReader
+            url={bookData}
           title=""
           location={location}
           locationChanged={handleLocationChange}
           getRendition={getRendition}
           epubOptions={{ flow: 'paginated' }}
-          readerStyles={readerStyles}
-        />
+            readerStyles={readerStyles}
+          />
+        )}
 
         {/* Custom Sidebar Overlay inside the TOC sidebar space */}
         {isSidebarOpen && (

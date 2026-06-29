@@ -68,6 +68,49 @@ export function PdfReader({
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  const shell = getShell(theme);
+  const progress = numPages ? (pageNumber / numPages) * 100 : 0;
+
+  // Track progress
+  useEffect(() => {
+    if (numPages) {
+      updateBookProgress(bookId, progress);
+    }
+  }, [bookId, progress, numPages]);
+
+  // Track reading session time
+  useEffect(() => {
+    let lastLogTime = Date.now();
+    
+    const logTime = () => {
+      if (document.hidden) return; // Don't log if tab is backgrounded
+      const now = Date.now();
+      const elapsedMinutes = (now - lastLogTime) / 60000;
+      if (elapsedMinutes >= 1) {
+        logReadingActivity(elapsedMinutes);
+        lastLogTime = now;
+      }
+    };
+    
+    const interval = setInterval(logTime, 60000);
+    
+    const handleUnload = () => {
+      const now = Date.now();
+      const elapsedMinutes = (now - lastLogTime) / 60000;
+      if (elapsedMinutes > 0.1 && !document.hidden) {
+        logReadingActivity(elapsedMinutes);
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleUnload);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', handleUnload);
+      handleUnload();
+    };
+  }, [bookId]);
+
   const jumpToPage = useCallback((targetPage: number) => {
     const max  = numPagesRef.current || 1;
     const next = Math.max(1, Math.min(targetPage, max));
@@ -164,49 +207,6 @@ export function PdfReader({
   };
 
   if (!fileUrl) return null;
-
-  const shell    = getShell(theme);
-  const progress = numPages ? (pageNumber / numPages) * 100 : 0;
-
-  // Track progress
-  useEffect(() => {
-    if (numPages) {
-      updateBookProgress(bookId, progress);
-    }
-  }, [bookId, progress, numPages]);
-
-  // Track reading session time
-  useEffect(() => {
-    let lastLogTime = Date.now();
-    
-    const logTime = () => {
-      if (document.hidden) return; // Don't log if tab is backgrounded
-      const now = Date.now();
-      const elapsedMinutes = (now - lastLogTime) / 60000;
-      if (elapsedMinutes >= 1) {
-        logReadingActivity(elapsedMinutes);
-        lastLogTime = now;
-      }
-    };
-    
-    const interval = setInterval(logTime, 60000);
-    
-    const handleUnload = () => {
-      const now = Date.now();
-      const elapsedMinutes = (now - lastLogTime) / 60000;
-      if (elapsedMinutes > 0.1 && !document.hidden) {
-        logReadingActivity(elapsedMinutes);
-      }
-    };
-    
-    window.addEventListener('beforeunload', handleUnload);
-    
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('beforeunload', handleUnload);
-      handleUnload();
-    };
-  }, [bookId]);
 
   return (
     <div
