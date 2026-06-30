@@ -66,6 +66,22 @@ body {
   transition: background-color 300ms var(--ease-out), color 300ms var(--ease-out);
 }
 
+/* ── Utilities ────────────────────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* ── Button press feedback ────────────────────────────────── */
 /* Every pressable element gets scale-down on :active */
 .btn-press {
@@ -314,6 +330,12 @@ body {
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important;
   border-right: 1px solid var(--theme-border) !important;
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+.epub-reader-container > div > div:nth-child(2) > div:first-child::-webkit-scrollbar {
+  display: none !important;
 }
 
 /* Modern styling for the TOC buttons */

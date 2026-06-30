@@ -261,9 +261,9 @@ export function Library() {
             setIsNavExpanded(!isNavExpanded);
             if (isNavExpanded) setMobileMenuOpen(false); // Close dropdown if open when collapsing nav
           }}
-          className="p-2.5 bg-ink-surface/80 backdrop-blur-xl rounded-full border border-ink-border/50 text-ink-text shadow-lg hover:bg-ink-surface transition-colors z-[110]"
+          className="p-3.5 bg-ink-surface/80 backdrop-blur-xl rounded-full border border-ink-border/50 text-ink-text shadow-lg hover:bg-ink-surface transition-colors z-[110]"
         >
-          {isNavExpanded ? <X size={20} /> : <Menu size={20} />}
+          {isNavExpanded ? <X size={26} /> : <Menu size={26} />}
         </button>
       </div>
 

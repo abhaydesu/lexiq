@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { pdfjs, Document, Page } from 'react-pdf';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, BookOpen, FileText } from 'lucide-react';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import type { ReaderTheme, CustomColors } from '../lib/theme';
@@ -39,9 +39,10 @@ export function PdfReader({
     const saved = localStorage.getItem(`lexiq-pdf-page-${bookId}`);
     return saved ? parseInt(saved, 10) : 1;
   });
-  const [scale,      setScale]      = useState(1.2);
+  const [scale,      setScale]      = useState(() => window.innerWidth < 640 ? 0.7 : 1.2);
   const [fileUrl,    setFileUrl]    = useState<string | null>(null);
   const [pageInput,  setPageInput]  = useState('');
+  const [isTwoPage,  setIsTwoPage]  = useState(() => window.innerWidth >= 768);
 
   // Responsive check
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
@@ -150,11 +151,11 @@ export function PdfReader({
 
       if ((e.ctrlKey || e.metaKey) && e.key === '=') {
         e.preventDefault();
-        setScale(s => parseFloat(Math.min(s + 0.15, 3).toFixed(2)));
+        setScale(s => parseFloat(Math.min(s + 0.1, 1.5).toFixed(2)));
       }
       if ((e.ctrlKey || e.metaKey) && e.key === '-') {
         e.preventDefault();
-        setScale(s => parseFloat(Math.max(s - 0.15, 0.5).toFixed(2)));
+        setScale(s => parseFloat(Math.max(s - 0.1, 0.5).toFixed(2)));
       }
     };
 
@@ -225,23 +226,47 @@ export function PdfReader({
         onCustomColorsChange={onCustomColorsChange}
         onClose={onClose}
       >
+        {/* View Toggle */}
+        <button
+          onClick={() => setIsTwoPage(!isTwoPage)}
+          className="hidden md:block reader-ctrl-btn btn-press p-2 mr-3"
+          style={{ color: shell.text }}
+          title={isTwoPage ? "Switch to single page view" : "Switch to two page view"}
+        >
+          {isTwoPage ? <FileText size={15} /> : <BookOpen size={15} />}
+        </button>
+
         {/* Zoom */}
         <button
-          onClick={() => setScale(s => parseFloat(Math.max(s - 0.15, 0.5).toFixed(2)))}
+          onClick={() => setScale(s => parseFloat(Math.max(s - 0.1, 0.5).toFixed(2)))}
           style={{ color: shell.text }}
           className="reader-ctrl-btn btn-press p-2"
           title="Zoom out (Ctrl −)"
         >
           <ZoomOut size={15} />
         </button>
-        <span
-          style={{ color: shell.muted }}
-          className="text-[11px] font-mono tabular-nums w-9 text-center select-none"
-        >
-          {Math.round(scale * 100)}%
-        </span>
+        
+        <div className="flex items-center gap-2 px-2">
+          <input 
+            type="range" 
+            min="0.5" 
+            max="1.5" 
+            step="0.1" 
+            value={scale} 
+            onChange={(e) => setScale(parseFloat(e.target.value))}
+            className="w-16 md:w-24 h-1 bg-ink-border rounded-full appearance-none cursor-pointer"
+            style={{ accentColor: shell.accent }}
+          />
+          <span
+            style={{ color: shell.muted }}
+            className="text-[11px] font-mono tabular-nums w-9 text-right select-none"
+          >
+            {Math.round(scale * 100)}%
+          </span>
+        </div>
+
         <button
-          onClick={() => setScale(s => parseFloat(Math.min(s + 0.15, 3).toFixed(2)))}
+          onClick={() => setScale(s => parseFloat(Math.min(s + 0.1, 1.5).toFixed(2)))}
           style={{ color: shell.text }}
           className="reader-ctrl-btn btn-press p-2"
           title="Zoom in (Ctrl +)"
@@ -259,7 +284,7 @@ export function PdfReader({
         <Document
           file={fileUrl}
           onLoadSuccess={onDocumentLoadSuccess}
-          className="flex flex-col items-center"
+          className="flex flex-col items-center my-auto"
           loading={
             <div className="flex items-center justify-center h-64">
               <div
@@ -270,18 +295,35 @@ export function PdfReader({
           }
         >
           {/* key={pageNumber} triggers the pdf-page-enter animation on page change */}
-          <div
-            key={pageNumber}
-            className="pdf-page-enter"
-            style={{ filter: shell.filter, transition: 'filter 300ms ease' }}
-          >
-            <Page
-              pageNumber={pageNumber}
-              scale={scale}
-              className="shadow-2xl"
-              renderTextLayer={true}
-              renderAnnotationLayer={true}
-            />
+          <div className="flex gap-4">
+            <div
+              key={`p1-${pageNumber}`}
+              className="pdf-page-enter"
+              style={{ filter: shell.filter, transition: 'filter 300ms ease' }}
+            >
+              <Page
+                pageNumber={pageNumber}
+                scale={scale}
+                className="shadow-2xl"
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+              />
+            </div>
+            {isTwoPage && pageNumber + 1 <= (numPages || 1) && (
+              <div
+                key={`p2-${pageNumber+1}`}
+                className="pdf-page-enter"
+                style={{ filter: shell.filter, transition: 'filter 300ms ease' }}
+              >
+                <Page
+                  pageNumber={pageNumber + 1}
+                  scale={scale}
+                  className="shadow-2xl"
+                  renderTextLayer={true}
+                  renderAnnotationLayer={true}
+                />
+              </div>
+            )}
           </div>
         </Document>
       </div>
@@ -294,7 +336,7 @@ export function PdfReader({
         >
           <button
             ref={leftArrowRef}
-            onClick={() => navigate(-1)}
+            onClick={() => navigate(isTwoPage ? -2 : -1)}
             disabled={pageNumber <= 1}
             style={{ color: shell.text }}
             className="reader-ctrl-btn btn-press p-1.5 rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
@@ -328,8 +370,8 @@ export function PdfReader({
 
           <button
             ref={rightArrowRef}
-            onClick={() => navigate(1)}
-            disabled={pageNumber >= numPages}
+            onClick={() => navigate(isTwoPage ? 2 : 1)}
+            disabled={isTwoPage ? pageNumber + 1 >= (numPages || 1) : pageNumber >= (numPages || 1)}
             style={{ color: shell.text }}
             className="reader-ctrl-btn btn-press p-1.5 rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
             title="Next page (→)"
