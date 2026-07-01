@@ -64,8 +64,8 @@ export function Header({
       <header className={headerClass} style={headerStyle}>
         <div className="flex items-center pl-4">
           <Link to="/" className="logo-link flex items-center">
-            <span className="logo-text text-xl font-semibold tracking-wide drop-shadow-sm transition-colors duration-200">
-              <span className="font-serif">lex<span className="italic">iq</span></span>
+            <span className="logo-text text-xl font-semibold tracking-wide drop-shadow-sm hover:scale-110 transition-all duration-100">
+              <img src={theme === 'dark' ? '/logo-dark-only.png' : '/logo-only.png'} alt="logo" className='w-8 h-8 mr-2' />
             </span>
           </Link>
         </div>
