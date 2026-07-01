@@ -2,7 +2,6 @@ import { ArrowLeft } from 'lucide-react';
 import { getShell } from '../../lib/theme';
 import type { ReaderTheme, CustomColors } from '../../lib/theme';
 import { ThemeDropdown } from './ThemeDropdown';
-import { AmbientAudio } from './AmbientAudio';
 
 interface ReaderToolbarProps {
   title: string;
@@ -53,8 +52,6 @@ export function ReaderToolbar({
       {/* Right: custom controls + theme */}
       <div className="flex items-center gap-0.5 shrink-0">
         {children}
-
-        <AmbientAudio theme={theme} />
 
         <ThemeDropdown 
           theme={theme} 
