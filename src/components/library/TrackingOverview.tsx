@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { BookMetadata } from '../../lib/storage';
-import { getReadingGoal, setReadingGoal } from '../../lib/storage';
+import { getReadingGoal, setReadingGoal, getManualFinishedCount, setManualFinishedCount } from '../../lib/storage';
 import { ReadingCalendar } from './ReadingCalendar';
 import { Pencil, BookOpen } from 'lucide-react';
 import { GlossyButton } from '../common/GlossyButton';
@@ -14,9 +14,12 @@ export function TrackingOverview({ books, activity }: TrackingOverviewProps) {
   const [goal, setGoal] = useState<number | null>(null);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const [inputFinishedValue, setInputFinishedValue] = useState('');
   const [pacingTab, setPacingTab] = useState<'yearly' | 'monthly' | 'weekly'>('yearly');
+  const [manualFinished, setManualFinished] = useState<number>(0);
   
-  const finishedCount = books.filter(b => b.status === 'finished').length;
+  const appFinishedCount = books.filter(b => b.status === 'finished').length;
+  const finishedCount = appFinishedCount + manualFinished;
 
   const now = new Date();
   const startOfYear = new Date(now.getFullYear(), 0, 0);
@@ -40,7 +43,12 @@ export function TrackingOverview({ books, activity }: TrackingOverviewProps) {
       setGoal(g);
       if (g) setInputValue(g.toString());
     });
+    getManualFinishedCount().then(val => {
+      setManualFinished(val);
+    });
   }, []);
+
+
 
   const handleGoalSubmit = async () => {
     const newGoal = parseInt(inputValue, 10);
@@ -50,7 +58,21 @@ export function TrackingOverview({ books, activity }: TrackingOverviewProps) {
     } else if (goal !== null) {
       setInputValue(goal.toString());
     }
+
+    const newFinishedVal = parseInt(inputFinishedValue, 10);
+    if (!isNaN(newFinishedVal) && newFinishedVal >= 0) {
+      const calculatedManual = Math.max(0, newFinishedVal - appFinishedCount);
+      setManualFinished(calculatedManual);
+      await setManualFinishedCount(calculatedManual);
+    }
+
     setIsEditingGoal(false);
+  };
+
+  const handleEditClick = () => {
+    setIsEditingGoal(true);
+    if (goal !== null) setInputValue(goal.toString());
+    setInputFinishedValue(finishedCount.toString());
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -58,6 +80,7 @@ export function TrackingOverview({ books, activity }: TrackingOverviewProps) {
     if (e.key === 'Escape' && goal !== null) {
       setIsEditingGoal(false);
       setInputValue(goal.toString());
+      setInputFinishedValue(finishedCount.toString());
     }
   };
 
@@ -129,7 +152,7 @@ export function TrackingOverview({ books, activity }: TrackingOverviewProps) {
               <h3 className="editorial-title text-xl font-medium text-ink-text">Reading Goal</h3>
               {goal !== null && !isEditingGoal && (
                 <button 
-                  onClick={() => setIsEditingGoal(true)}
+                  onClick={handleEditClick}
                   title="Edit Goal"
                   className="btn-press bg-ink-bg border border-ink-border/50 text-ink-accent p-2 rounded-full shadow-sm hover:bg-ink-surface/80 transition-colors"
                 >
@@ -156,23 +179,37 @@ export function TrackingOverview({ books, activity }: TrackingOverviewProps) {
             
             <div className="flex flex-col items-center md:items-start justify-center flex-1 py-2">
               {(!goal || isEditingGoal) ? (
-                <div className="flex flex-col items-center md:items-start w-full animate-fade-in">
-                   <input
-                     type="number"
-                     placeholder="e.g. 12"
-                     value={inputValue}
-                     onChange={e => setInputValue(e.target.value)}
-                     onKeyDown={handleKeyDown}
-                     autoFocus
-                     className="bg-transparent border-b-2 border-ink-accent/50 focus:border-ink-accent outline-none text-center md:text-left text-4xl font-serif text-ink-text w-24 mb-4 transition-colors"
-                   />
-                   <button 
-                     onClick={handleGoalSubmit}
-                     className="px-4 py-2 bg-ink-text text-ink-bg rounded-full text-sm font-medium hover:opacity-90 transition-opacity"
-                   >
-                     Set Goal
-                   </button>
-                 </div>
+                <div className="flex flex-col items-center md:items-start w-full animate-fade-in gap-3">
+                  <div className="flex items-center gap-3 w-full max-w-[200px] justify-between">
+                    <span className="text-sm font-medium text-ink-text-muted">Target Goal:</span>
+                    <input
+                      type="number"
+                      placeholder="e.g. 12"
+                      value={inputValue}
+                      onChange={e => setInputValue(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      autoFocus
+                      className="bg-transparent border-b border-ink-accent/50 focus:border-ink-accent outline-none text-right font-serif text-xl text-ink-text w-16 transition-colors"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 w-full max-w-[200px] justify-between">
+                    <span className="text-sm font-medium text-ink-text-muted">Books Finished:</span>
+                    <input
+                      type="number"
+                      placeholder="e.g. 5"
+                      value={inputFinishedValue}
+                      onChange={e => setInputFinishedValue(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      className="bg-transparent border-b border-ink-accent/50 focus:border-ink-accent outline-none text-right font-serif text-xl text-ink-text w-16 transition-colors"
+                    />
+                  </div>
+                  <button 
+                    onClick={handleGoalSubmit}
+                    className="mt-2 px-4 py-2 bg-ink-text text-ink-bg rounded-full text-xs font-semibold hover:opacity-90 transition-opacity"
+                  >
+                    Save Changes
+                  </button>
+                </div>
               ) : (
                 <div className="flex flex-col items-center md:items-start animate-fade-in w-full">
                   <div className="flex items-baseline gap-2 mb-2">

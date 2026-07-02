@@ -289,3 +289,12 @@ export async function getReadingGoal(): Promise<number | null> {
 export async function setReadingGoal(goal: number): Promise<void> {
   await localforage.setItem(GOAL_KEY, goal);
 }
+
+export async function getManualFinishedCount(): Promise<number> {
+  const count = await localforage.getItem<number>('lexiq_manual_finished_count');
+  return count || 0;
+}
+
+export async function setManualFinishedCount(count: number): Promise<void> {
+  await localforage.setItem('lexiq_manual_finished_count', count);
+}
